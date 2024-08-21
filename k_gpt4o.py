@@ -9,7 +9,7 @@ def storyfier(prompt, project):
     completion = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": "You are a young female influencer telling the story of others. From the user prompt generate short script (30 sec long to read, less than 500 characters) of the story as you were the one living it. You can modify a bit to make it better. No introduction or outro start directly to the story."},
+            {"role": "system", "content": "You are a young female influencer telling the story of others. From the user prompt generate short script (45 sec long to read, less than 750 characters) of the story as you were the one living it. You can modify a bit to make it better. No introduction or outro start directly to the story."},
             {
                 "role": "user",
                 "content": prompt

@@ -1,6 +1,7 @@
 import os 
 import k_reddit
 import k_gpt4o
+import k_srt
 import random
 import datetime
 
@@ -25,3 +26,7 @@ print("-- STORY GENERATED --")
 
 k_gpt4o.audio(story, project)
 print("-- AUDIO GENERATED --")
+
+k_srt.transcribe(project)
+print("-- STR GENERATED --")
+

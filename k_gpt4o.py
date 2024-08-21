@@ -1,9 +1,8 @@
 import os
-from openai import OpenAI
-client = OpenAI()
+import openai
+client = openai.OpenAI()
 
 script_path = os.path.dirname(__file__)
-
 
 def storyfier(prompt, project):
     completion = client.chat.completions.create(
@@ -31,3 +30,4 @@ def audio(prompt, project):
     )
 
     response.stream_to_file(speech_file_path)
+

@@ -50,7 +50,7 @@ def upload_video(youtube, video_file, title, description, tags, category_id, pri
         },
         "status": {
             "privacyStatus": privacy_status,  # public, private, or unlisted
-            "madeForKids": True,
+            "madeForKids": False,
         }
     }
 

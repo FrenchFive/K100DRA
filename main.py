@@ -60,7 +60,7 @@ if files_in_folder:
 
     print('-- VIDEO GENERATED --')
 
-    description, tags = k_gpt4o.ytb(story)
+    description, tags = k_gpt4o.ytb(project, story)
 
     k_youtube.publish(f'{script_path}/projects/{project}/video_subtitled.mp4', title, description, tags)
 else:

@@ -31,7 +31,7 @@ def audio(prompt, project):
 
     response.stream_to_file(speech_file_path)
 
-def ytb(prompt):
+def ytb(project, prompt):
     completion = client.chat.completions.create(
         model="gpt-4o",
         messages=[
@@ -49,5 +49,8 @@ def ytb(prompt):
     
     # Strip whitespace from each tag in the list
     tags = [tag.strip() for tag in data[1].split(',')]
+
+    with open(f'{script_path}/projects/{project}/description.txt','w', encoding='utf-8') as file:
+        file.write(f'{description} \n \n {tags}')
 
     return description, tags

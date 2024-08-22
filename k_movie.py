@@ -1,4 +1,6 @@
-from moviepy.editor import VideoFileClip, AudioFileClip
+from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
+from pysrt import SubRipFile
+import pysrt
 import os
 import subprocess
 
@@ -60,3 +62,39 @@ def audio(video_in, audio_in, output):
         subprocess.run(command, check=True)
     except:
         print("error")
+
+
+def subtitles(srt_path, video_input, video_output):
+    # Load the video
+    video = VideoFileClip(video_input)
+    
+    # Load the subtitles
+    subtitles = pysrt.open(srt_path)
+    
+    # Create a list to hold text clips for subtitles
+    subtitle_clips = []
+    
+    # Define the font size and position for the subtitles
+    font_size = 50
+    text_color = 'white'
+    font = 'C:/Users/Chan/AppData/Local/Microsoft/Windows/Fonts/Montserrat-Black.ttf'
+    
+    # Create text clips for each subtitle
+    for subtitle in subtitles:
+        # Create a text clip for the subtitle
+        text_clip = TextClip(subtitle.text, fontsize=font_size, color=text_color, font=font, size=(video.w - 100, None), method='caption')
+        
+        # Set the position and duration for the subtitle
+        text_clip = text_clip.set_position(('center', 'center')).set_start(subtitle.start.ordinal / 1000).set_duration((subtitle.end.ordinal - subtitle.start.ordinal) / 1000)
+        
+        # Append the text clip to the list of subtitle clips
+        subtitle_clips.append(text_clip)
+    
+    # Create a CompositeVideoClip to overlay the subtitles on the video
+    final_video = CompositeVideoClip([video] + subtitle_clips)
+    
+    # Write the final video to a file
+    final_video.write_videofile(video_output, codec='libx264', audio_codec='aac')
+    
+    # Close the video to free resources
+    video.close()

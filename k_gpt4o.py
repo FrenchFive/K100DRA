@@ -31,3 +31,26 @@ def audio(prompt, project):
 
     response.stream_to_file(speech_file_path)
 
+def ytb(prompt):
+    completion = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "You are a young female influencer telling the story of others. Write ONLY the description of the video for the given script, make it short, finish the descriptin by : '<!>' to mark the end of the description and the beginning of the tags, then write the tags for the video, each sepeated by commas"},
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+    result = completion.choices[0].message.content.strip()
+
+    data = str(result).split("<!>")
+    description = data[0]
+    
+    # Strip whitespace from each tag in the list
+    tags = [tag.strip() for tag in data[1].split(',')]
+
+    return description, tags
+
+
+print(ytb("So, it was a random Tuesday, right? I was flipping through my old comic book collection, just having a chill day. I stopped at a Wolverine issue because, duh, he's a total badass. But then I saw it—Wolverine is only 5 foot 3 inches tall! Like, hold up, this fierce, claw-wielding superhero is almost my height? Suddenly, it hit me: Height doesn't define strength. There's this powerful guy defying all odds, and he’s proof that you don’t need to be a towering giant to make a massive impact. Now, whenever I feel small, I think, if Wolverine can be a hero, why can't I?"))

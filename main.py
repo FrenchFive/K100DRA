@@ -4,6 +4,7 @@ import k_reddit
 import k_gpt4o
 import k_srt
 import k_movie
+import k_youtube
 
 import random
 import datetime
@@ -54,6 +55,14 @@ if files_in_folder:
     k_movie.cropping(f'{script_path}/videos/{video}', f'{script_path}/projects/{project}/video.mp4', beg, duration)
 
     k_movie.audio(f'{script_path}/projects/{project}/video.mp4', f'{script_path}/projects/{project}/speech.mp3', f'{script_path}/projects/{project}/video_audio.mp4')
+
+    k_movie.subtitles(f'{script_path}/projects/{project}/speech.srt',f'{script_path}/projects/{project}/video_audio.mp4',f'{script_path}/projects/{project}/video_subtitled.mp4')
+
+    print('-- VIDEO GENERATED --')
+
+    description, tags = k_gpt4o.ytb(story)
+
+    k_youtube.publish(f'{script_path}/projects/{project}/video_subtitled.mp4', title, description, tags)
 else:
     print('NO FILE IN VIDEO FOLDER')
 

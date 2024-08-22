@@ -64,7 +64,7 @@ def should_start_new_chunk(word, next_word, punctuation_marks, time_gap_threshol
 
     return False
 
-def transcribe(project, time_gap_threshold=0.5, max_words_per_chunk=3, punctuation_marks={'.', '?', '!', ','}):
+def transcribe(project, time_gap_threshold=0.5, max_words_per_chunk=2, punctuation_marks={'.', '?', '!', ','}):
     audio_path = f"{script_path}/projects/{project}/speech.mp3"
     audio_file= open(audio_path, "rb")
     transcription = client.audio.transcriptions.create(

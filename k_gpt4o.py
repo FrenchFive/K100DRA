@@ -51,6 +51,3 @@ def ytb(prompt):
     tags = [tag.strip() for tag in data[1].split(',')]
 
     return description, tags
-
-
-print(ytb("So, it was a random Tuesday, right? I was flipping through my old comic book collection, just having a chill day. I stopped at a Wolverine issue because, duh, he's a total badass. But then I saw it—Wolverine is only 5 foot 3 inches tall! Like, hold up, this fierce, claw-wielding superhero is almost my height? Suddenly, it hit me: Height doesn't define strength. There's this powerful guy defying all odds, and he’s proof that you don’t need to be a towering giant to make a massive impact. Now, whenever I feel small, I think, if Wolverine can be a hero, why can't I?"))

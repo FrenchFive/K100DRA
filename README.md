@@ -28,3 +28,17 @@ Scripting content creation using Python and AI
 **PTDUB** : Manage Audio 
 <br>```pip install pydub```
  
+**OPENAI** : Manage AI functions 
+<br>```pip install openai```
+
+**MOVIEPY** : Allows to control Videos through Python
+<br>```pip install moviepy```
+
+**PYSRT** : Manage SRT file (Standart file format for Subtitles)
+<br>```pip install pysrt```
+
+**GOOGLE API** : Permit automatic upload to youtube 
+
+**API KEY ARE NECESSARY FOR :**
+- REDDIT : Client ID and Secret : ```reddit.secret```
+- YOUTUBE : JSON App : ```youtube.json``` // Youtube Credentials will require a Web sign-in for the 1st time.

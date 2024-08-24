@@ -20,4 +20,10 @@ Scripting content creation using Python and AI
 - YOUTUBE :
     - Uses Post Title as Video Title 
     - Based on Script, generates Description and Tags 
-    - Automatic Upload     
+    - Automatic Upload
+
+## REQUIREMENTS 
+
+
+PTDUB : Manage Audio 
+‘‘‘ pip install pydub‘’’ 

@@ -25,5 +25,6 @@ Scripting content creation using Python and AI
 ## REQUIREMENTS 
 
 
-PTDUB : Manage Audio 
-‘‘‘ pip install pydub‘’’ 
+**PTDUB** : Manage Audio 
+<br>´´´pip install pydub´´´
+ 

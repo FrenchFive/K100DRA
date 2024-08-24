@@ -26,5 +26,5 @@ Scripting content creation using Python and AI
 
 
 **PTDUB** : Manage Audio 
-<br>´´´pip install pydub´´´
+<br>```pip install pydub```
  

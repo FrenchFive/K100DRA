@@ -27,6 +27,9 @@ Scripting content creation using Python and AI
 
 **PTDUB** : Manage Audio 
 <br>```pip install pydub```
+
+**PRAW** : Used to parse Reddit Data
+<br>```pip install pyraw```
  
 **OPENAI** : Manage AI functions 
 <br>```pip install openai```

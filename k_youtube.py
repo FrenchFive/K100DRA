@@ -1,10 +1,13 @@
 import os
-import google_auth_oauthlib.flow
-import googleapiclient.discovery
-import googleapiclient.errors
+import logging
 import google.auth.transport.requests
-from googleapiclient.http import MediaFileUpload
 from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from googleapiclient.http import MediaFileUpload
+from google.auth.exceptions import RefreshError
+
 
 # Scopes required for uploading videos to YouTube
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
@@ -12,31 +15,31 @@ SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 script_path = os.path.dirname(__file__)
 
 def get_authenticated_service():
-    """Authenticate and build the YouTube API client, saving credentials for reuse."""
-    api_service_name = "youtube"
-    api_version = "v3"
-    client_secrets_file = f"{script_path}/youtube.json"
-    credentials_file = f"{script_path}/token.json"  # This file will store your credentials
-
     creds = None
-    # Check if the credentials file exists
-    if os.path.exists(credentials_file):
-        creds = Credentials.from_authorized_user_file(credentials_file, SCOPES)
-    # If credentials are not available or invalid, initiate the OAuth flow
+    token_path = 'token.json'
+    credentials_path = 'youtube.json'
+
+    # Load existing credentials from token.json if it exists
+    if os.path.exists(token_path):
+        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+
+    # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(google.auth.transport.requests.Request())
-        else:
-            flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-                client_secrets_file, SCOPES)
+            try:
+                creds.refresh(google.auth.transport.requests.Request())
+            except RefreshError:
+                logging.error("Failed to refresh credentials, initiating web authentication.")
+                creds = None
+        if not creds:
+            flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
             creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open(credentials_file, 'w') as token:
-            token.write(creds.to_json())
+            # Save the credentials for the next run
+            with open(token_path, 'w') as token:
+                token.write(creds.to_json())
 
-    youtube = googleapiclient.discovery.build(
-        api_service_name, api_version, credentials=creds)
-
+    # Build the YouTube service
+    youtube = build('youtube', 'v3', credentials=creds)
     return youtube
 
 def upload_video(youtube, video_file, title, description, tags, category_id, privacy_status):

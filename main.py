@@ -22,7 +22,7 @@ if os.path.exists(f'{script_path}/projects')==False:
 
 os.mkdir(f'{script_path}/projects/{project}')
 
-subreddits = ['TrueOffMyChest','todayilearned',"TIFU"]
+subreddits = ['TrueOffMyChest','todayilearned',"TIFU","confessions","relationships","life","decidingtobebetter","offmychest","confession","FML"]
 subreddit = random.choice(subreddits)
 print(f'-- SUBREDDIT :: {subreddit} --')
 

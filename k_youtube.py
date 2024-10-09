@@ -1,4 +1,7 @@
 import os
+import json
+import threading
+from datetime import datetime, timedelta
 import google.auth.transport.requests
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -9,6 +12,43 @@ from google.auth.exceptions import RefreshError
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 TOKEN_PATH = 'token.json'
 CREDENTIALS_PATH = 'youtube.json'
+
+def get_scheduled_time():
+    json_file = 'upload_time.json'
+    current_datetime = datetime.now()
+    current_date = current_datetime.date()
+
+    if os.path.exists(json_file):
+        with open(json_file, 'r') as file:
+            data = json.load(file)
+            scheduled_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+
+        if scheduled_date < current_date:
+            scheduled_date = current_date
+        else:
+            scheduled_date += timedelta(days=1)
+    else:
+        scheduled_date = current_date
+
+    # Set the time to 3 PM
+    scheduled_datetime = datetime.combine(scheduled_date, datetime.min.time()) + timedelta(hours=15)
+
+    with open(json_file, 'w') as file:
+        json.dump({'date': scheduled_date.strftime('%Y-%m-%d')}, file)
+
+    return scheduled_datetime.isoformat() + "Z"
+
+def upload_chunks(request):
+    response = None
+    while response is None:
+        try:
+            status, response = request.next_chunk()
+            if status:
+                print(f"Uploaded {int(status.progress() * 100)}%")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            break
+    return response
 
 def get_authenticated_service():
     creds = None
@@ -30,17 +70,19 @@ def get_authenticated_service():
 
     return build('youtube', 'v3', credentials=creds)
 
-def upload_video(file_path, title, description, tags):
+def publish(file_path, title, description, tags):
     youtube = get_authenticated_service()
+    scheduled_time = get_scheduled_time()
     body = {
         'snippet': {
-            'title': title,
-            'description': description,
+            'title': (title[:75] + '...') if len(title) > 75 else title,
+            'description': (title[:500] + '...') if len(title) > 500 else title,
             'tags': tags,
             'categoryId': '24'  # Category ID for "People & Blogs"
         },
         'status': {
-            'privacyStatus': 'public',  # or 'private' or 'unlisted'
+            'privacyStatus': 'private',  # or 'private' or 'unlisted'
+            "publishAt": scheduled_time
         }
     }
 
@@ -51,11 +93,15 @@ def upload_video(file_path, title, description, tags):
         media_body=media
     )
 
-    response = None
-    while response is None:
-        status, response = request.next_chunk()
-        if status:
-            print(f"Uploaded {int(status.progress() * 100)}%")
-
-    print("Upload Complete!")
-    return response
+    response = upload_chunks(request)
+    if response:
+        print("Upload Complete!")
+        # Extract video ID and print the link and title
+        video_id = response['id']
+        video_url = f"https://www.youtube.com/watch?v={video_id}"
+        print(f"Video URL: {video_url}")
+        print(f"Title: {title}")
+        return response
+    else:
+        print("Upload failed.")
+        return None

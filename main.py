@@ -10,6 +10,12 @@ import random
 import datetime
 from pydub import AudioSegment
 
+def AudioDuration(audio_path):
+    audio = AudioSegment.from_file(audio_path)
+    duration = len(audio) / 1000
+    print(f'-- DURATION : {duration} --')
+    return duration
+
 project = datetime.datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
 script_path = os.path.dirname(__file__)
 
@@ -37,8 +43,10 @@ k_gpt4o.audio(story, project)
 print("-- AUDIO GENERATED --")
 
 audio_path = f"{script_path}/projects/{project}/speech.mp3"
-audio = AudioSegment.from_file(audio_path)  # Replace with your file path
-duration = len(audio) / 1000
+duration = AudioDuration(audio_path)
+if duration > 60:
+    k_movie.speedupAudio(audio_path, duration)
+    duration = AudioDuration(audio_path)
 
 k_srt.transcribe(project)
 print("-- STR GENERATED --")

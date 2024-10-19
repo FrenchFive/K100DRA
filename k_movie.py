@@ -3,6 +3,7 @@ from pysrt import SubRipFile
 import pysrt
 import os
 import subprocess
+from pydub import AudioSegment
 
 script_path = os.path.dirname(__file__)
 
@@ -98,3 +99,19 @@ def subtitles(srt_path, video_input, video_output):
     
     # Close the video to free resources
     video.close()
+
+def speedupAudio(audio_path, duration):
+    # Load the audio file
+    audio = AudioSegment.from_file(audio_path)
+    
+    # Define the speedup factor
+    speedup_factor = 60 / duration
+    
+    # Speed up the audio
+    sped_up_audio = audio.speedup(playback_speed=speedup_factor)
+    
+    # Export the sped up audio
+    sped_up_audio.export(audio_path, format='mp3')
+    
+    # Return the new duration
+    return 60

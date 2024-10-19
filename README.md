@@ -2,6 +2,8 @@
 
 Scripting content creation using Python and AI
 
+[YOUTUBE](https://www.youtube.com/@k100dra5/shorts) :: https://www.youtube.com/@k100dra5/shorts
+
 ## Functionnalities
 
 - REDDIT :

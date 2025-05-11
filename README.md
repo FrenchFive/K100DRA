@@ -45,5 +45,5 @@ Scripting content creation using Python and AI
 **GOOGLE API** : Permit automatic upload to youtube 
 
 **API KEY ARE NECESSARY FOR :**
-- REDDIT : Client ID and Secret : ```reddit.secret```
+- REDDIT : Client ID and Secret : ```reddit.secret``` :: https://www.reddit.com/prefs/apps
 - YOUTUBE : JSON App : ```youtube.json``` // Youtube Credentials will require a Web sign-in for the 1st time.

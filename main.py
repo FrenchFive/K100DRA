@@ -54,23 +54,24 @@ print("-- STR GENERATED --")
 
 #GET VIDEO FILES
 files_in_folder = [f for f in os.listdir(video_folder) if os.path.isfile(os.path.join(video_folder, f)) and f != '.gitkeep']
-if files_in_folder:
-    video = random.choice(files_in_folder)
-    print(f'-- VIDEO : {video} --')
-    videolen = k_movie.len(f'{script_path}/videos/{video}')
-    beg = random.randint(0, int(videolen-duration))
-    print(f'Début : {beg} // Durée {duration}')
-    k_movie.cropping(f'{script_path}/videos/{video}', f'{script_path}/projects/{project}/video.mp4', beg, duration)
+if len(files_in_folder) == 0:
+    print("No video files found in the folder.")
+    exit()
 
-    k_movie.audio(f'{script_path}/projects/{project}/video.mp4', f'{script_path}/projects/{project}/speech.mp3', f'{script_path}/projects/{project}/video_audio.mp4')
+video = random.choice(files_in_folder)
+print(f'-- VIDEO : {video} --')
+videolen = k_movie.len(f'{script_path}/videos/{video}')
+beg = random.randint(0, int(videolen-duration))
+print(f'Début : {beg} // Durée {duration}')
+k_movie.cropping(f'{script_path}/videos/{video}', f'{script_path}/projects/{project}/video.mp4', beg, duration)
 
-    k_movie.subtitles(f'{script_path}/projects/{project}/speech.srt',f'{script_path}/projects/{project}/video_audio.mp4',f'{script_path}/projects/{project}/video_subtitled.mp4')
+k_movie.audio(f'{script_path}/projects/{project}/video.mp4', f'{script_path}/projects/{project}/speech.mp3', f'{script_path}/projects/{project}/video_audio.mp4')
 
-    print('-- VIDEO GENERATED --')
+k_movie.subtitles(f'{script_path}/projects/{project}/speech.srt',f'{script_path}/projects/{project}/video_audio.mp4',f'{script_path}/projects/{project}/video_subtitled.mp4')
 
-    description, tags = k_gpt4o.ytb(project, story)
+print('-- VIDEO GENERATED --')
 
-    k_youtube.publish(f'{script_path}/projects/{project}/video_subtitled.mp4', title, description, tags)
-else:
-    print('NO FILE IN VIDEO FOLDER')
+description, tags = k_gpt4o.ytb(project, story)
 
+#k_youtube.publish(f'{script_path}/projects/{project}/video_subtitled.mp4', title, description, tags)
+#print(f'-- VIDEO PUBLISHED --')

@@ -31,7 +31,7 @@ Scripting content creation using Python and AI
 <br>```pip install pydub```
 
 **PRAW** : Used to parse Reddit Data
-<br>```pip install pyraw```
+<br>```pip install rawpy```
  
 **OPENAI** : Manage AI functions 
 <br>```pip install openai```

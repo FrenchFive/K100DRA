@@ -14,38 +14,32 @@ client = OpenAI(api_key=KEY_OPENAI)
 script_path = os.path.dirname(__file__)
 
 def add_punctuation_to_words(words, text):
-    # Start tracking the index in the original text
     text_index = 0
     result = []
 
-    # Iterate over each word in the words list
     for word_info in words:
-        word = word_info['word']
+        word = word_info.word  # dot notation
         start_index = text_index
 
-        # Find the word in the text, starting from text_index
         while text_index < len(text) and text[text_index:text_index+len(word)] != word:
             text_index += 1
 
-        # After finding the word, look for punctuation right after the word
         end_index = text_index + len(word)
-        
-        # Collect any punctuation following the word
+
         while end_index < len(text) and not text[end_index].isalnum():
             word += text[end_index]
             end_index += 1
 
-        # Move the text_index to the end of the word and punctuation
         text_index = end_index
-        
-        # Add the word with punctuation, start, and end time back to the result list
+
         result.append({
-            'word': word.replace(' ',''),
-            'start': word_info['start'],
-            'end': word_info['end']
+            'word': word.replace(' ', ''),
+            'start': word_info.start,  # dot notation
+            'end': word_info.end       # dot notation
         })
-    
+
     return result
+
 
 def format_time(seconds):
     """ Convert seconds to SRT time format (HH:MM:SS,mmm) """

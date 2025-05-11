@@ -78,7 +78,7 @@ def subtitles(srt_path, video_input, video_output):
     # Define the font size and position for the subtitles
     font_size = 50
     text_color = 'white'
-    font = 'C:/Users/Chan/AppData/Local/Microsoft/Windows/Fonts/Montserrat-Black.ttf'
+    font = os.path.join(script_path, 'fonts', 'Montserrat_BLACK.ttf')
     
     # Create text clips for each subtitle
     for subtitle in subtitles:

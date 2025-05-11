@@ -1,4 +1,4 @@
-from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
+from moviepy import VideoFileClip, TextClip, CompositeVideoClip
 from pysrt import SubRipFile
 import pysrt
 import os
@@ -35,7 +35,7 @@ def cropping(input, output, beg, duration):
     y_center = video_height / 2
 
     # Crop the video to the new 9:16 aspect ratio, centered
-    cropped_video = video.subclip(beg, end_time).crop(width=crop_width, height=crop_height, x_center=x_center, y_center=y_center)
+    cropped_video = video.subclipped(beg, end_time).cropped(width=crop_width, height=crop_height, x_center=x_center, y_center=y_center)
 
     # Export the cropped and shortened video
     cropped_video.write_videofile(output, codec="libx264", audio=False)
@@ -77,16 +77,18 @@ def subtitles(srt_path, video_input, video_output):
     
     # Define the font size and position for the subtitles
     font_size = 50
-    text_color = 'white'
-    font = os.path.join(script_path, 'fonts', 'Montserrat_BLACK.ttf')
+    font_color = 'white'
+    font_path = os.path.join(script_path, 'fonts', 'Montserrat_BLACK.ttf')
+    print(f'-- FONT : {font_path} --')
+
     
     # Create text clips for each subtitle
     for subtitle in subtitles:
         # Create a text clip for the subtitle
-        text_clip = TextClip(subtitle.text, fontsize=font_size, color=text_color, font=font, size=(video.w - 100, None), method='caption')
+        text_clip = TextClip(text=subtitle.text, font_size=font_size, color=font_color, font=font_path, size=(video.w - 100, None), method='caption')
         
         # Set the position and duration for the subtitle
-        text_clip = text_clip.set_position(('center', 'center')).set_start(subtitle.start.ordinal / 1000).set_duration((subtitle.end.ordinal - subtitle.start.ordinal) / 1000)
+        text_clip = text_clip.with_position(('center', 'center')).with_start(subtitle.start.ordinal / 1000).with_duration((subtitle.end.ordinal - subtitle.start.ordinal) / 1000)
         
         # Append the text clip to the list of subtitle clips
         subtitle_clips.append(text_clip)

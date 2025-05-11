@@ -2,6 +2,8 @@ import os
 import random
 import datetime
 from pydub import AudioSegment
+import argparse
+import shutil
 
 import k_reddit
 import k_gpt4o
@@ -24,7 +26,7 @@ def audio_duration(path):
 
 
 # === Pipeline Steps ===
-def fetch_and_generate_story(project):
+def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_story=False, bypass_audio=False):
     subreddits = [
         "TrueOffMyChest",
         "todayilearned",
@@ -40,15 +42,30 @@ def fetch_and_generate_story(project):
     subreddit = random.choice(subreddits)
     print(f"-- SUBREDDIT :: {subreddit} --")
 
-    title, text = k_reddit.random_post(subreddit, project)
-    print(f"-- TITLE :: {title} --")
+    if not bypass_reddit:
+        title, text = k_reddit.random_post(subreddit, project)
+        print(f"-- TITLE :: {title} --")
+    else:
+        title = "Sample Title"
+        text = "Sample text for the story."
+        print("-- BYPASSING REDDIT --")
 
-    prompt = f"{title}\n{text}"
-    story = k_gpt4o.storyfier(prompt, project)
-    print("-- STORY GENERATED --")
+    if not bypass_story:
+        prompt = f"{title}\n{text}"
+        story = k_gpt4o.storyfier(prompt, project)
+        print("-- STORY GENERATED --")
+    else:
+        story = text
+        print("-- BYPASSING STORY GENERATION --")
 
-    k_gpt4o.audio(story, project)
-    print("-- AUDIO GENERATED --")
+    if not bypass_audio:
+        k_gpt4o.audio(story, project)
+        print("-- AUDIO GENERATED --")
+    else:
+        orig = f"{script_path}/test/speech_test.mp3"
+        dest = f"{script_path}/projects/{project}/speech.mp3"
+        shutil.copy(orig, dest)
+        print("-- BYPASSING AUDIO GENERATION --")
 
     return story, title
 
@@ -103,14 +120,21 @@ def create_final_video(project, video_path, start_time, duration, script_path):
     k_movie.subtitles(srt_file, video_with_audio, final_output)
     print("-- FINAL VIDEO GENERATED --")
 
+def args():
+    parser = argparse.ArgumentParser(description="Generate a video from a Reddit post.")
+    parser.add_argument("--bp_r", action="store_true", help="Bypass Reddit fetching.")
+    parser.add_argument("--bp_s", action="store_true", help="Bypass story generation.")
+    parser.add_argument("--bp_a", action="store_true", help="Bypass audio generation.")
+    return parser.parse_args()
 
 def main():
+    my_args = args()
     script_path = os.path.dirname(__file__)
     project = datetime.datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
 
     ensure_directories(script_path, project)
 
-    story, title = fetch_and_generate_story(project)
+    story, title = fetch_and_generate_story(script_path, project, my_args.bypass_reddit, my_args.bypass_story, my_args.bypass_audio)
     audio_path, duration = prepare_audio(project, script_path)
 
     create_subtitles(project)
@@ -118,7 +142,7 @@ def main():
     video_path, start_time = select_background_video(duration, script_path)
     create_final_video(project, video_path, start_time, duration, script_path)
 
-    description, tags = k_gpt4o.ytb(project, story)
+    #description, tags = k_gpt4o.ytb(project, story)
 
     # Uncomment this to publish:
     # k_youtube.publish(f'{script_path}/projects/{project}/video_subtitled.mp4', title, description, tags)
@@ -127,3 +151,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    

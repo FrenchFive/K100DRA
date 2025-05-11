@@ -2,10 +2,10 @@
 __pycache__
 
 projects 
-videos
-musics
 
 *.mp4
 *.mp3
 *.secret
 *.json
+
+.venv

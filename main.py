@@ -53,7 +53,7 @@ print("-- STR GENERATED --")
 
 
 #GET VIDEO FILES
-files_in_folder = [f for f in os.listdir(video_folder) if os.path.isfile(os.path.join(video_folder, f))]
+files_in_folder = [f for f in os.listdir(video_folder) if os.path.isfile(os.path.join(video_folder, f)) and f != '.gitkeep']
 if files_in_folder:
     video = random.choice(files_in_folder)
     print(f'-- VIDEO : {video} --')

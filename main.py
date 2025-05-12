@@ -134,7 +134,7 @@ def main():
 
     ensure_directories(script_path, project)
 
-    story, title = fetch_and_generate_story(script_path, project, my_args.bypass_reddit, my_args.bypass_story, my_args.bypass_audio)
+    story, title = fetch_and_generate_story(script_path, project, my_args.bp_r, my_args.bp_s, my_args.bp_a)
     audio_path, duration = prepare_audio(project, script_path)
 
     create_subtitles(project)

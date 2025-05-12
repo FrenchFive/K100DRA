@@ -125,6 +125,7 @@ def args():
     parser.add_argument("--bp_r", action="store_true", help="Bypass Reddit fetching.")
     parser.add_argument("--bp_s", action="store_true", help="Bypass story generation.")
     parser.add_argument("--bp_a", action="store_true", help="Bypass audio generation.")
+    parser.add_argument("--project", action="store_true", help="Use latest project.")
     return parser.parse_args()
 
 def main():
@@ -132,13 +133,17 @@ def main():
     script_path = os.path.dirname(__file__)
     project = datetime.datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
 
+    if my_args.project:
+        project = os.path.basename(os.path.normpath(os.getcwd()))
+        print(f"-- PROJECT : {project} --")
+    
     ensure_directories(script_path, project)
 
-    story, title = fetch_and_generate_story(script_path, project, my_args.bp_r, my_args.bp_s, my_args.bp_a)
+    if not my_args.project:
+        story, title = fetch_and_generate_story(script_path, project, my_args.bp_r, my_args.bp_s, my_args.bp_a)
+        create_subtitles(project)
+
     audio_path, duration = prepare_audio(project, script_path)
-
-    create_subtitles(project)
-
     video_path, start_time = select_background_video(duration, script_path)
     create_final_video(project, video_path, start_time, duration, script_path)
 

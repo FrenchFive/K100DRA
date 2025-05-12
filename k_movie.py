@@ -99,6 +99,8 @@ def subtitles(srt_path, video_input, video_output):
             color=font_color,
             font=font_path,
             method='caption',
+            stroke_color='black', # outline colour
+            stroke_width=2, # thickness in pixels
             size=(video.w, box_height)  # Full width, auto height
         )
 

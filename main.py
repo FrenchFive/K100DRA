@@ -101,7 +101,7 @@ def select_background_video(duration, script_path):
     print(f"-- VIDEO SELECTED : {video_file} --")
 
     full_path = os.path.join(video_folder, video_file)
-    total_length = k_movie.len(full_path)
+    total_length = k_movie.length_video(full_path)
     start_time = random.randint(0, int(total_length - duration))
 
     print(f"Start: {start_time} / Duration: {duration}")
@@ -110,7 +110,7 @@ def select_background_video(duration, script_path):
 
 def create_final_video(project, video_path, start_time, duration, script_path):
     cropped = f"{script_path}/projects/{project}/video.mp4"
-    audio = f"{script_path}/projects/{project}/speech.mp3"
+    audio = f"{script_path}/projects/{project}/speech_with_music.mp3"
     video_with_audio = f"{script_path}/projects/{project}/video_audio.mp4"
     final_output = f"{script_path}/projects/{project}/video_subtitled.mp4"
     srt_file = f"{script_path}/projects/{project}/speech.srt"
@@ -160,6 +160,11 @@ def main():
         create_subtitles(project)
 
     audio_path, duration = prepare_audio(project, script_path)
+
+    music_path = os.path.join(script_path, "musics", "lilly.mp3")  # replace with actual filename
+    combined_audio_path = os.path.join(script_path, "projects", project, "speech_with_music.mp3")
+    k_movie.add_background_music(audio_path, music_path, combined_audio_path)
+
     video_path, start_time = select_background_video(duration, script_path)
     create_final_video(project, video_path, start_time, duration, script_path)
 

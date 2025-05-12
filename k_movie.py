@@ -7,7 +7,7 @@ from pydub import AudioSegment
 
 script_path = os.path.dirname(__file__)
 
-def len(video):
+def length_video(video):
     videopy = VideoFileClip(video)
     return(videopy.duration)
 
@@ -135,3 +135,22 @@ def speedupAudio(audio_path, duration):
     
     # Return the new duration
     return 60
+
+def add_background_music(speech_path, music_path, output_path, music_volume_dB=-20):
+    speech = AudioSegment.from_file(speech_path)
+    music = AudioSegment.from_file(music_path)
+
+    # Loop or trim music to match the speech length
+    if len(music) < len(speech):
+        loops = int(len(speech) / len(music)) + 1
+        music = music * loops
+    music = music[:len(speech)]
+
+    # Reduce music volume
+    music = music - abs(music_volume_dB)
+
+    # Combine audio
+    combined = speech.overlay(music)
+
+    # Export the result
+    combined.export(output_path, format="mp3")

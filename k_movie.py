@@ -68,39 +68,55 @@ def audio(video_in, audio_in, output):
 def subtitles(srt_path, video_input, video_output):
     # Load the video
     video = VideoFileClip(video_input)
-    
+
     # Load the subtitles
     subtitles = pysrt.open(srt_path)
-    
+
     # Create a list to hold text clips for subtitles
     subtitle_clips = []
-    
-    # Define the font size and position for the subtitles
+
+    # Define style settings
     font_size = 30
     font_color = 'white'
     font_path = os.path.join(script_path, 'fonts', 'Montserrat_BLACK.ttf')
     print(f'-- FONT : {font_path} --')
 
+    # Calculate generous height (e.g., 2 lines of text)
+    max_lines = 2
+    line_height = font_size * 1.4  # includes spacing
+    box_height = int(max_lines * line_height)
     
+
     # Create text clips for each subtitle
     for subtitle in subtitles:
-        # Create a text clip for the subtitle
-        text_clip = TextClip(text=subtitle.text, font_size=font_size, color=font_color, font=font_path, size=(video.w - 100, None), method='caption')
-        
-        # Set the position and duration for the subtitle
-        text_clip = text_clip.with_position(('center', 'center')).with_start(subtitle.start.ordinal / 1000).with_duration((subtitle.end.ordinal - subtitle.start.ordinal) / 1000)
-        
-        # Append the text clip to the list of subtitle clips
+        start_time = subtitle.start.ordinal / 1000
+        duration = (subtitle.end.ordinal - subtitle.start.ordinal) / 1000
+
+        # Create the text clip (use keyword arguments only to avoid conflicts)
+        text_clip = TextClip(
+            text=subtitle.text,
+            font_size=font_size,
+            color=font_color,
+            font=font_path,
+            method='caption',
+            size=(video.w, box_height)  # Full width, auto height
+        )
+
+        # Set position and duration
+        text_clip = text_clip.with_position(('center','center')).with_start(start_time).with_duration(duration)
+
+        # Add to list
         subtitle_clips.append(text_clip)
-    
-    # Create a CompositeVideoClip to overlay the subtitles on the video
+
+    # Overlay subtitles onto the video
     final_video = CompositeVideoClip([video] + subtitle_clips)
-    
-    # Write the final video to a file
+
+    # Write the final output
     final_video.write_videofile(video_output, codec='libx264', audio_codec='aac')
-    
-    # Close the video to free resources
+
+    # Clean up
     video.close()
+
 
 def speedupAudio(audio_path, duration):
     # Load the audio file

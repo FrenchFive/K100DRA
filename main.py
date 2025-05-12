@@ -134,7 +134,23 @@ def main():
     project = datetime.datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
 
     if my_args.project:
-        project = os.path.basename(os.path.normpath(os.getcwd()))
+        projects_path = os.path.join(script_path, "projects")
+        print(f"-- PROJECTS PATH : {projects_path} --")
+        print(f"-- LIST OF PROJECTS --")
+        for d in os.listdir(projects_path):
+            if os.path.isdir(os.path.join(projects_path, d)):
+                print(f"  - {d}")
+        latest_folder = max(
+            (os.path.join(projects_path, d) for d in os.listdir(projects_path) if os.path.isdir(os.path.join(projects_path, d))),
+            key=os.path.getmtime,
+            default=None
+        )
+        if latest_folder:
+            project = os.path.basename(latest_folder)
+            print(f"-- LATEST PROJECT : {project} --")
+        else:
+            print("No projects found.")
+            exit(1)
         print(f"-- PROJECT : {project} --")
     
     ensure_directories(script_path, project)

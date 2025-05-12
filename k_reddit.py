@@ -3,12 +3,14 @@ import os
 import random
 
 script_path = os.path.dirname(__file__)
-with open(f'{script_path}/reddit.secret', 'r', encoding='utf-8') as file:
-    data = file.readlines()
 
-client_id = str(data[0]).strip().replace('\n','')
-client_secret = str(data[1]).strip().replace('\n','')
-user_agent = "K100DRA"
+import dotenv
+dotenv.load_dotenv()
+
+client_id = os.getenv("REDDIT_CLIENT_ID")
+client_secret = os.getenv("REDDIT_CLIENT_SECRET")
+user_agent = os.getenv("REDDIT_USER_AGENT")
+
 
 reddit = praw.Reddit(
     client_id=client_id,

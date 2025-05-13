@@ -64,3 +64,24 @@ def ytb(project, prompt):
         file.write(f'{description} \n \n {tags}')
 
     return description, tags
+
+def rate_story(story_text):
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",  # Cheap model
+        messages=[
+            {"role": "system", "content": "You're an expert in viral YouTube storytelling. Rate the following story from 0 to 10 based on how engaging, entertaining, or emotionally impactful it would be as a short-form video. ONLY OUTPUT THE GRADE"},
+            {"role": "user", "content": story_text}
+        ]
+    )
+    content = response.choices[0].message.content.strip()
+
+    # Try to extract a number between 1 and 10
+    for word in content.split():
+        if word.isdigit():
+            rating = int(word)
+            if 0 <= rating <= 10:
+                return rating
+
+    # Fallback if not parsed correctly
+    return 0
+

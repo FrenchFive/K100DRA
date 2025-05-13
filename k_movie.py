@@ -125,7 +125,7 @@ def speedupAudio(audio_path, duration):
     audio = AudioSegment.from_file(audio_path)
     
     # Define the speedup factor
-    speedup_factor = duration / 60 
+    speedup_factor = duration / 60
     
     # Speed up the audio
     sped_up_audio = audio.speedup(playback_speed=speedup_factor)
@@ -134,7 +134,7 @@ def speedupAudio(audio_path, duration):
     sped_up_audio.export(audio_path, format='mp3')
     
     # Return the new duration
-    return 60
+    return len(sped_up_audio) / 1000  # Return duration in second
 
 def add_background_music(speech_path, music_path, output_path, music_volume_dB=-20):
     speech = AudioSegment.from_file(speech_path)

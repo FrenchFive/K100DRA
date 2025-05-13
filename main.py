@@ -39,16 +39,31 @@ def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_s
         "confession",
         "FML",
     ]
-    subreddit = random.choice(subreddits)
-    print(f"-- SUBREDDIT :: {subreddit} --")
-
+    
+    attempts = 0
+    max_attempts = 5
+    rating = 0
     if not bypass_reddit:
-        title, text = k_reddit.random_post(subreddit, project)
-        print(f"-- TITLE :: {title} --")
+        while rating < 7 and attempts < max_attempts:
+            subreddit = random.choice(subreddits)
+            title, text = k_reddit.random_post(subreddit, project) 
+            
+            rating = k_gpt4o.rate_story(text)
+
+            attempts += 1
+
     else:
         title = "Sample Title"
         text = "Sample text for the story."
         print("-- BYPASSING REDDIT --")
+        rating = 10
+
+    if rating < 7:
+        raise ValueError("Failed to find a good enough story after 10 attempts.")
+
+    print(f"-- SUBREDDIT :: {subreddit} --")
+    print(f"-- TITLE :: {title} --")
+    print(f"-- RATING :: {rating}/10 --")
 
     if not bypass_story:
         prompt = f"{title}\n{text}"
@@ -74,9 +89,13 @@ def prepare_audio(project, script_path):
     audio_path = f"{script_path}/projects/{project}/speech.mp3"
     duration = audio_duration(audio_path)
 
-    if duration > 60:
-        k_movie.speedupAudio(audio_path, duration)
-        duration = audio_duration(audio_path)
+    for i in range(3):
+        if duration > 60:
+            k_movie.speedupAudio(audio_path, duration)
+            duration = audio_duration(audio_path)
+        else:
+            break
+    print(f"-- FINAL DURATION : {duration} --")
 
     return audio_path, duration
 

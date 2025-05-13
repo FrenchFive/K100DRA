@@ -204,11 +204,11 @@ def main():
     video_path, start_time = select_background_video(duration, script_path)
     create_final_video(project, video_path, start_time, duration, script_path)
 
-    #description, tags = k_gpt4o.ytb(project, story)
+    description, tags = k_gpt4o.ytb(project, story)
 
     # Uncomment this to publish:
-    # k_youtube.publish(f'{script_path}/projects/{project}/video_subtitled.mp4', title, description, tags)
-    # print(f'-- VIDEO PUBLISHED --')
+    k_youtube.publish(f'{script_path}/projects/{project}/video_subtitled.mp4', title, description, tags)
+    print(f'-- VIDEO PUBLISHED --')
 
 
 if __name__ == "__main__":

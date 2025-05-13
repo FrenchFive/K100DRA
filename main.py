@@ -41,7 +41,7 @@ def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_s
     ]
     
     attempts = 0
-    max_attempts = 5
+    max_attempts = 20
     rating = 0
     if not bypass_reddit:
         while rating < 7 and attempts < max_attempts:
@@ -63,7 +63,7 @@ def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_s
 
     print(f"-- SUBREDDIT :: {subreddit} --")
     print(f"-- TITLE :: {title} --")
-    print(f"-- RATING :: {rating}/10 --")
+    print(f"-- RATING :: {rating}/10 || ATTEMPTS :: {attempts} --")
 
     if not bypass_story:
         prompt = f"{title}\n{text}"

@@ -107,6 +107,21 @@ def select_background_video(duration, script_path):
     print(f"Start: {start_time} / Duration: {duration}")
     return full_path, start_time
 
+def select_background_music(script_path):
+    music_folder = os.path.join(script_path, "musics")
+    files = [
+        f for f in os.listdir(music_folder)
+        if os.path.isfile(os.path.join(music_folder, f)) and f.endswith(".mp3") and f != ".gitkeep"
+    ]
+
+    if not files:
+        raise FileNotFoundError("No music files found in the folder.")
+
+    music_file = random.choice(files)
+    print(f"-- MUSIC SELECTED : {music_file} --")
+
+    return os.path.join(music_folder, music_file)
+
 
 def create_final_video(project, video_path, start_time, duration, script_path):
     cropped = f"{script_path}/projects/{project}/video.mp4"
@@ -161,7 +176,7 @@ def main():
 
     audio_path, duration = prepare_audio(project, script_path)
 
-    music_path = os.path.join(script_path, "musics", "lilly.mp3")  # replace with actual filename
+    music_path = select_background_music(script_path)
     combined_audio_path = os.path.join(script_path, "projects", project, "speech_with_music.mp3")
     k_movie.add_background_music(audio_path, music_path, combined_audio_path)
 

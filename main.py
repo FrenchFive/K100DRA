@@ -90,7 +90,7 @@ def prepare_audio(project, script_path):
     duration = audio_duration(audio_path)
 
     for i in range(3):
-        if duration > 60:
+        if duration >= 61:
             k_movie.speedupAudio(audio_path, duration)
             duration = audio_duration(audio_path)
         else:
@@ -191,9 +191,11 @@ def main():
 
     if not my_args.project:
         story, title = fetch_and_generate_story(script_path, project, my_args.bp_r, my_args.bp_s, my_args.bp_a)
-        create_subtitles(project)
 
     audio_path, duration = prepare_audio(project, script_path)
+
+    if not my_args.project:
+        create_subtitles(project)
 
     music_path = select_background_music(script_path)
     combined_audio_path = os.path.join(script_path, "projects", project, "speech_with_music.mp3")

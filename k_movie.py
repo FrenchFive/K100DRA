@@ -125,7 +125,7 @@ def speedupAudio(audio_path, duration):
     audio = AudioSegment.from_file(audio_path)
     
     # Define the speedup factor
-    speedup_factor = duration / 60
+    speedup_factor = duration / 59
     
     # Speed up the audio
     sped_up_audio = audio.speedup(playback_speed=speedup_factor)

@@ -38,6 +38,10 @@ def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_s
         "offmychest",
         "confession",
         "FML",
+        "AmItheAsshole",
+        "BestofRedditorUpdates",
+        "MadeMeSmile",
+        "UnpopularOpinion"
     ]
     
     attempts = 0

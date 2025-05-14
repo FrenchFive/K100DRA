@@ -200,6 +200,8 @@ def main():
 
     if not my_args.project:
         create_subtitles(project)
+        k_gpt4o.correct_srt_file(project)
+        print("-- SRT CORRECTED --")
 
     music_path = select_background_music(script_path)
     combined_audio_path = os.path.join(script_path, "projects", project, "speech_with_music.mp3")
@@ -209,10 +211,12 @@ def main():
     create_final_video(project, video_path, start_time, duration, script_path)
 
     description, tags = k_gpt4o.ytb(project, story)
+    print("-- DESCRIPTION AND TAGS GENERATED --")
+    
 
     # Uncomment this to publish:
-    k_youtube.publish(f'{script_path}/projects/{project}/video_subtitled.mp4', title, description, tags)
-    print(f'-- VIDEO PUBLISHED --')
+    #k_youtube.publish(f'{script_path}/projects/{project}/video_subtitled.mp4', title, description, tags)
+    #print(f'-- VIDEO PUBLISHED --')
 
 
 if __name__ == "__main__":

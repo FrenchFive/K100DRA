@@ -85,3 +85,27 @@ def rate_story(story_text):
     # Fallback if not parsed correctly
     return 0
 
+def correct_srt_file(project):
+    srt_file_path = f"{script_path}/projects/{project}/speech.srt"
+    with open(srt_file_path, 'r', encoding='utf-8') as file:
+        content = file.read()
+
+    original_content = f"{script_path}/projects/{project}/generated.txt"
+    with open(original_content, 'r', encoding='utf-8') as file:
+        original_text = file.read()
+    
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "Correct the SRT file to match the original text. The SRT file is in the first part and the original text is in the second part. Make sure that the SRT file matches the original text. Adding missing words and ONLY SEND THE SRT OUTPUT. Make sure everyword as at least few frames of appearance even if that means moving around the timings."},
+            {"role": "user", "content": f"{content}\n\n{original_text}"}
+        ]
+    )
+    result = response.choices[0].message.content.strip()
+
+    #rename the original srt file
+    os.rename(srt_file_path, f"{srt_file_path}.bak")
+
+    with open(srt_file_path, 'w', encoding='utf-8') as file:
+        file.write(result)
+

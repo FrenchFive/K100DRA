@@ -212,7 +212,18 @@ def main():
     ensure_directories(script_path, project)
 
     if not my_args.project:
-        story, rtitle, reddit, link = fetch_and_generate_story(script_path, project, my_args.bp_r, my_args.bp_s, my_args.bp_a)
+        attempts = 0
+        max_attempts = 5
+
+        while attempts < max_attempts:
+            story, rtitle, reddit, link = fetch_and_generate_story(script_path, project, my_args.bp_r, my_args.bp_s, my_args.bp_a)
+
+            if audio_duration(f"{script_path}/projects/{project}/speech.mp3") <= 66:
+                break
+            else:
+                attempts += 1
+                print(f"Audio too long, retrying... ({attempts}/{max_attempts})")
+                
     else:
         story = "None"
         rtitle = "None"

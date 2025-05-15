@@ -31,8 +31,8 @@ def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_s
         "todayilearned",
         "TIFU",
         "confessions",
-        "relationships",
-        "life",
+        "FanTheories",
+        "TalesFromRetail",
         "decidingtobebetter",
         "offmychest",
         "confession",
@@ -40,6 +40,7 @@ def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_s
         "AmItheAsshole",
         "BestofRedditorUpdates",
         "MadeMeSmile",
+        "funfacts",
         "UnpopularOpinion"
     ]
     

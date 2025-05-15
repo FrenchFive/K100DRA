@@ -45,7 +45,7 @@ def ytb(project, prompt, reddit, rtitle, link):
     completion = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": "You are a young YOUTUBE Shorts female influencer telling stories. Write a title for the given video, finish the title by '<!>', Make it short and impactful without it being too revealing. Write the description of the video for the given script, make it short, finish the descriptin by : '<!>' to mark the end of the description and the beginning of the tags, then write the tags for the video, each sepeated by commas. ONLY OUTPUT THE ASKED ELEMENTS AND NO MORE, seperate the title, description and tags by '<!>'."},
+            {"role": "system", "content": "You are a young YOUTUBE Shorts female influencer telling stories. Write a title for the given video, finish the title by '<!>', Make it short and impactful without it being too revealing. Write the description of the video for the given script, make it short, finish the descriptin by : '<!>' to mark the end of the description and the beginning of the tags, then write the tags for the video, each sepeated by commas. ONLY OUTPUT THE ASKED ELEMENTS AND NO MORE, seperate the title, description and tags by '<!>'. DO NOT SPECIFY THE CATEGORIES, no Title: or Description: or Tags:, none of that."},
             {
                 "role": "user",
                 "content": prompt
@@ -55,7 +55,7 @@ def ytb(project, prompt, reddit, rtitle, link):
     result = completion.choices[0].message.content.strip()
 
     data = str(result).split("<!>")
-    title = data[0].strip()
+    title = data[0].strip().replace('"','')
     description = data[1].strip()
 
     

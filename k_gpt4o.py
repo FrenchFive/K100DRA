@@ -114,7 +114,7 @@ def correct_srt_file(project):
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": "Correct the SRT file to match the original text. The SRT file is in the first part and the original text is in the second part. Make sure that the SRT file matches the original text. Adding missing words and correcting MISPELLED one. ONLY SEND THE SRT OUTPUT. Make sure every word as at least few frames of appearance even if that means moving around the timings."},
+            {"role": "system", "content": "Correct the SRT file to match the original text. The SRT file is in the first part and the original text is in the second part. Make sure that the SRT file matches the original text. Adding missing words and correcting MISPELLED one. ONLY SEND THE SRT OUTPUT. If a word is missing or has no display time, add only 10 to 40 milliseconds or less and only modify the timing of THE element before, 1 before only, OTHERWISE dont touch the timings."},
             {"role": "user", "content": f"{content}\n\n{original_text}"}
         ]
     )

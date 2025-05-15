@@ -15,8 +15,14 @@ def cropping(input, output, beg, duration):
     video = VideoFileClip(input)
     end_time = beg + duration
 
-    # Get the original video dimensions (1920x1080 assumed)
-    video_width, video_height = video.size
+    # Subclip the video to the desired duration
+    subclip = video.subclipped(beg, end_time)
+
+    # Resize the video to 1080x1920 (9:16 aspect ratio)
+    resized_video = subclip.resized(height=1280).resized(width=720)
+
+    # Get the original video dimensions
+    video_width, video_height = resized_video.size
 
     # Define the target aspect ratio (9:16)
     target_aspect_ratio = 9 / 16
@@ -35,7 +41,7 @@ def cropping(input, output, beg, duration):
     y_center = video_height / 2
 
     # Crop the video to the new 9:16 aspect ratio, centered
-    cropped_video = video.subclipped(beg, end_time).cropped(width=crop_width, height=crop_height, x_center=x_center, y_center=y_center)
+    cropped_video = resized_video.cropped(width=crop_width, height=crop_height, x_center=x_center, y_center=y_center)
 
     # Export the cropped and shortened video
     cropped_video.write_videofile(output, codec="libx264", audio=False)
@@ -76,7 +82,7 @@ def subtitles(srt_path, video_input, video_output):
     subtitle_clips = []
 
     # Define style settings
-    font_size = 30
+    font_size = 35
     font_color = 'white'
     font_path = os.path.join(script_path, 'fonts', 'Montserrat_BLACK.ttf')
     print(f'-- FONT : {font_path} --')

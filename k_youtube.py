@@ -76,7 +76,7 @@ def publish(file_path, title, description, tags):
     body = {
         'snippet': {
             'title': (title[:96] + '...') if len(title) > 96 else title,
-            'description': (description[:4996] + '...') if len(title) > 4996 else title,
+            'description': (description[:4996] + '...') if len(description) > 4996 else description,
             'tags': tags,
             'categoryId': '24', # Category ID for "Entertainment"
             'defaultLanguage': 'en',

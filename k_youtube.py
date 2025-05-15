@@ -78,7 +78,9 @@ def publish(file_path, title, description, tags):
             'title': (title[:75] + '...') if len(title) > 75 else title,
             'description': (title[:500] + '...') if len(title) > 500 else title,
             'tags': tags,
-            'categoryId': '24'  # Category ID for "People & Blogs"
+            'categoryId': '24', # Category ID for "People & Blogs"
+            'defaultLanguage': 'en',
+            'defaultAudioLanguage': 'en',
         },
         'status': {
             'privacyStatus': 'private',  # or 'private' or 'unlisted'

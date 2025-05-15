@@ -75,10 +75,10 @@ def publish(file_path, title, description, tags):
     scheduled_time = get_scheduled_time()
     body = {
         'snippet': {
-            'title': (title[:75] + '...') if len(title) > 75 else title,
-            'description': (title[:500] + '...') if len(title) > 500 else title,
+            'title': (title[:96] + '...') if len(title) > 96 else title,
+            'description': (description[:4996] + '...') if len(title) > 4996 else title,
             'tags': tags,
-            'categoryId': '24', # Category ID for "People & Blogs"
+            'categoryId': '24', # Category ID for "Entertainment"
             'defaultLanguage': 'en',
             'defaultAudioLanguage': 'en',
         },

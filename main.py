@@ -21,7 +21,6 @@ def ensure_directories(script_path, project):
 
 def audio_duration(path):
     duration = len(AudioSegment.from_file(path)) / 1000
-    print(f"-- DURATION : {duration} --")
     return duration
 
 
@@ -109,6 +108,8 @@ def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_s
 def prepare_audio(project, script_path):
     audio_path = f"{script_path}/projects/{project}/speech.mp3"
     duration = audio_duration(audio_path)
+    print(f"-- DURATION : {duration} --")
+    org_dur = duration
 
     for i in range(3):
         if duration >= 61:
@@ -116,7 +117,9 @@ def prepare_audio(project, script_path):
             duration = audio_duration(audio_path)
         else:
             break
-    print(f"-- FINAL DURATION : {duration} --")
+    
+    if duration != org_dur:
+        print(f"-- FINAL DURATION : {duration} --")
 
     return audio_path, duration
 

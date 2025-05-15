@@ -47,12 +47,25 @@ def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_s
     attempts = 0
     max_attempts = 20
     rating = 0
+
+    # Check if links file exists, if not create it
+    links_path = f"{script_path}/links.txt"
+    if not os.path.exists(f"{script_path}/links.txt"):
+        with open(links_path, "w", encoding="utf-8") as file:
+            file.write("")
+
+    list_of_ids = []
+    with open(links_path, "r", encoding="utf-8") as file:
+        for line in file:
+            list_of_ids.append(line.strip())
+
     if not bypass_reddit:
         while rating < 7 and attempts < max_attempts:
             subreddit = random.choice(subreddits)
-            title, text = k_reddit.random_post(subreddit, project) 
+            title, text, link, id = k_reddit.random_post(subreddit, project) 
             
-            rating = k_gpt4o.rate_story(text)
+            if id not in list_of_ids:
+                rating = k_gpt4o.rate_story(text)
 
             attempts += 1
 
@@ -63,7 +76,11 @@ def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_s
         rating = 10
 
     if rating < 7:
-        raise ValueError("Failed to find a good enough story after 10 attempts.")
+        raise ValueError(f"Failed to find a good enough story after {max_attempts} attempts.")
+
+    # ADD id to json file 
+    with open(links_path, "a", encoding="utf-8") as file:
+        file.write(f"{id}\n")
 
     print(f"-- SUBREDDIT :: {subreddit} --")
     print(f"-- TITLE :: {title} --")
@@ -86,7 +103,7 @@ def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_s
         shutil.copy(orig, dest)
         print("-- BYPASSING AUDIO GENERATION --")
 
-    return story, title
+    return story, title, subreddit, link
 
 
 def prepare_audio(project, script_path):
@@ -190,11 +207,16 @@ def main():
             print("No projects found.")
             exit(1)
         print(f"-- PROJECT : {project} --")
+        reddit = "None"
     
     ensure_directories(script_path, project)
 
     if not my_args.project:
-        story, title = fetch_and_generate_story(script_path, project, my_args.bp_r, my_args.bp_s, my_args.bp_a)
+        story, rtitle, reddit, link = fetch_and_generate_story(script_path, project, my_args.bp_r, my_args.bp_s, my_args.bp_a)
+    else:
+        story = "None"
+        rtitle = "None"
+        reddit = "None"
 
     audio_path, duration = prepare_audio(project, script_path)
 
@@ -210,9 +232,10 @@ def main():
     video_path, start_time = select_background_video(duration, script_path)
     create_final_video(project, video_path, start_time, duration, script_path)
 
-    description, tags = k_gpt4o.ytb(project, story)
+    title, description, tags = k_gpt4o.ytb(project, story, reddit, rtitle, link)
+    print(f"-- TITLE : {title} --")
     print("-- DESCRIPTION AND TAGS GENERATED --")
-    
+
 
     # Uncomment this to publish:
     #k_youtube.publish(f'{script_path}/projects/{project}/video_subtitled.mp4', title, description, tags)

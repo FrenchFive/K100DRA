@@ -41,11 +41,11 @@ def audio(prompt, project):
 
     response.stream_to_file(speech_file_path)
 
-def ytb(project, prompt):
+def ytb(project, prompt, reddit, rtitle, link):
     completion = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": "You are a young female influencer telling the story of others. Write ONLY the description of the video for the given script, make it short, finish the descriptin by : '<!>' to mark the end of the description and the beginning of the tags, then write the tags for the video, each sepeated by commas"},
+            {"role": "system", "content": "You are a young YOUTUBE Shorts female influencer telling stories. Write a title for the given video, finish the title by '<!>', Make it short and impactful without it being too revealing. Write the description of the video for the given script, make it short, finish the descriptin by : '<!>' to mark the end of the description and the beginning of the tags, then write the tags for the video, each sepeated by commas. ONLY OUTPUT THE ASKED ELEMENTS AND NO MORE, seperate the title, description and tags by '<!>'."},
             {
                 "role": "user",
                 "content": prompt
@@ -55,19 +55,36 @@ def ytb(project, prompt):
     result = completion.choices[0].message.content.strip()
 
     data = str(result).split("<!>")
-    description = data[0]
+    title = data[0].strip()
+    description = data[1].strip()
+
     
     # Strip whitespace from each tag in the list
-    tags = [tag.strip() for tag in data[1].split(',')]
+    tags = [tag.strip() for tag in data[2].split(',')]
+
+    tags.append("reddit")
+    tags.append(reddit)
+
+    description += "\n"
+    description += "\n" + f"REDDIT : r/{reddit}"
+    description += "\n" + f"TITLE : {rtitle}"
+    description += "\n" + f"LINK : {link}"
+    description += "\n\n\n\n"
+
+    descrpt_tags = ""
+    for tag in tags:
+        descrpt_tags += f"#{tag} "
+
+    description += descrpt_tags
 
     with open(f'{script_path}/projects/{project}/description.txt','w', encoding='utf-8') as file:
-        file.write(f'{description} \n \n {tags}')
+        file.write(f'{title} \n \n {description} \n \n {tags}')
 
-    return description, tags
+    return title, description, tags
 
 def rate_story(story_text):
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo",  # Cheap model
+        model="gpt-4o",  #gpt-3.5-turbo
         messages=[
             {"role": "system", "content": "You're an expert in viral YouTube storytelling. Rate the following story from 0 to 10 based on how engaging, entertaining, or emotionally impactful it would be as a short-form video. ONLY OUTPUT THE GRADE"},
             {"role": "user", "content": story_text}
@@ -97,7 +114,7 @@ def correct_srt_file(project):
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": "Correct the SRT file to match the original text. The SRT file is in the first part and the original text is in the second part. Make sure that the SRT file matches the original text. Adding missing words and ONLY SEND THE SRT OUTPUT. Make sure everyword as at least few frames of appearance even if that means moving around the timings."},
+            {"role": "system", "content": "Correct the SRT file to match the original text. The SRT file is in the first part and the original text is in the second part. Make sure that the SRT file matches the original text. Adding missing words and correcting MISPELLED one. ONLY SEND THE SRT OUTPUT. Make sure every word as at least few frames of appearance even if that means moving around the timings."},
             {"role": "user", "content": f"{content}\n\n{original_text}"}
         ]
     )

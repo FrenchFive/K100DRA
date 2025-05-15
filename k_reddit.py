@@ -22,7 +22,7 @@ def random_post(subreddit_name, project):
     subreddit = reddit.subreddit(subreddit_name)
     
     # Get a list of posts from the subreddit
-    posts = list(subreddit.hot(limit=50))  # You can change the limit to get more posts
+    posts = list(subreddit.hot(limit=100))  # You can change the limit to get more posts
     
     # Choose a random post
     random_post = random.choice(posts)
@@ -39,4 +39,4 @@ def random_post(subreddit_name, project):
     with open(f'{script_path}/projects/{project}/link.txt', 'w', encoding='utf-8') as file:
         file.write(post_url)
     
-    return title, text
+    return title, text, post_url, random_post.id

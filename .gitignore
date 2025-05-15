@@ -10,5 +10,6 @@ projects
 
 .venv
 .env
-
 .vscode
+
+links.txt

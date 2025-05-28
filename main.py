@@ -47,6 +47,7 @@ def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_s
     attempts = 0
     max_attempts = 20
     rating = 0
+    ideal_rating = 7
 
     # Check if links file exists, if not create it
     links_path = f"{script_path}/links.txt"
@@ -60,7 +61,7 @@ def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_s
             list_of_ids.append(line.strip())
 
     if not bypass_reddit:
-        while rating < 7 and attempts < max_attempts:
+        while rating < ideal_rating and attempts < max_attempts:
             subreddit = random.choice(subreddits)
             title, text, link, id = k_reddit.random_post(subreddit, project) 
             
@@ -75,7 +76,7 @@ def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_s
         print("-- BYPASSING REDDIT --")
         rating = 10
 
-    if rating < 7:
+    if rating < ideal_rating:
         raise ValueError(f"Failed to find a good enough story after {max_attempts} attempts.")
 
     # ADD id to json file 

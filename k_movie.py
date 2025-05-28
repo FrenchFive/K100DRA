@@ -7,6 +7,8 @@ from pydub import AudioSegment
 
 script_path = os.path.dirname(__file__)
 
+TARGET_ASPECT_RATIO = 9 / 16
+
 def length_video(video):
     videopy = VideoFileClip(video)
     return(videopy.duration)
@@ -25,7 +27,7 @@ def cropping(input, output, beg, duration):
     video_width, video_height = resized_video.size
 
     # Define the target aspect ratio (9:16)
-    target_aspect_ratio = 9 / 16
+    target_aspect_ratio = TARGET_ASPECT_RATIO
 
     # Calculate the target width based on the original height and target aspect ratio
     crop_width = int(video_height * target_aspect_ratio)
@@ -160,3 +162,56 @@ def add_background_music(speech_path, music_path, output_path, music_volume_dB=-
 
     # Export the result
     combined.export(output_path, format="mp3")
+
+def upscale_to_4k_youtube(input_path, output_path):
+    # Temporary file to hold the upscaled video without compression
+    temp_path = "temp_upscaled.mp4"
+
+    # Step 1: Load and upscale using MoviePy
+    print("Upscaling to 3840x2160...")
+    target_ar = TARGET_ASPECT_RATIO
+
+    target_height = 2160
+    target_width = int(target_height * target_ar)
+
+    if target_width > 3840:
+        target_width = 3840
+        target_height = int(target_width / target_ar)
+
+    if target_height % 2 != 0:
+        target_height -= 1
+    if target_width % 2 != 0:
+        target_width -= 1
+    
+    video = VideoFileClip(input_path)
+    upscaled = video.resize(height=2160, width=3840)
+    upscaled.write_videofile(temp_path, codec='libx264', preset='ultrafast', audio_codec='aac')
+
+    # Step 2: Re-encode with YouTube 4K recommended settings via ffmpeg
+    command = [
+        'ffmpeg',
+        '-y',
+        '-i', temp_path,
+        '-c:v', 'libx264',
+        '-b:v', '50M',               # High bitrate for 4K
+        '-maxrate', '60M',
+        '-bufsize', '100M',
+        '-preset', 'slow',           # Better compression
+        '-profile:v', 'high',
+        '-level', '5.2',
+        '-pix_fmt', 'yuv420p',
+        '-c:a', 'aac',
+        '-b:a', '384k',
+        '-movflags', '+faststart',   # Helps streaming
+        output_path
+    ]
+
+    try:
+        subprocess.run(command, check=True)
+        print(f"✅ Exported YouTube 4K ready video to: {output_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ ffmpeg error: {e}")
+    finally:
+        # Clean up temp file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)

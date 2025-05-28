@@ -171,12 +171,16 @@ def create_final_video(project, video_path, start_time, duration, script_path):
     cropped = f"{script_path}/projects/{project}/video.mp4"
     audio = f"{script_path}/projects/{project}/speech_with_music.mp3"
     video_with_audio = f"{script_path}/projects/{project}/video_audio.mp4"
-    final_output = f"{script_path}/projects/{project}/video_subtitled.mp4"
+    sub_output = f"{script_path}/projects/{project}/video_subtitled.mp4"
+    final_output = f"{script_path}/projects/{project}/video_final.mp4"
     srt_file = f"{script_path}/projects/{project}/speech.srt"
 
     k_movie.cropping(video_path, cropped, start_time, duration)
     k_movie.audio(cropped, audio, video_with_audio)
-    k_movie.subtitles(srt_file, video_with_audio, final_output)
+    k_movie.subtitles(srt_file, video_with_audio, sub_output)
+
+    """--- Upscaling to 4K for YouTube ---"""
+    k_movie.upscale_to_4k_youtube(sub_output, final_output)
     print("-- FINAL VIDEO GENERATED --")
 
 def args():
@@ -254,7 +258,7 @@ def main():
 
 
     # Uncomment this to publish:
-    k_youtube.publish(f'{script_path}/projects/{project}/video_subtitled.mp4', title, description, tags)
+    k_youtube.publish(f"{script_path}/projects/{project}/video_final.mp4", title, description, tags)
     print(f'-- VIDEO PUBLISHED --')
 
 

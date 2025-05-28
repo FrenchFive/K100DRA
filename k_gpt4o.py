@@ -17,8 +17,8 @@ def storyfier(prompt, project):
     completion = client.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": "You are a young female influencer. From the user prompt generate short script (45 sec long to read, less than 750 characters) of the story as if you wrote the script, modify if needed. You can modify a bit to make it better. No introduction or outro start directly to the story. The story must be written in english whatever the language of the prompt is. Make this as entertaining as possible for Youtube."},
-            {"role": "system", "content": "Priowrity is to make the story as entertaining as possible, not to be 100% accurate. You can modify the story a bit if needed."},
+            {"role": "system", "content": "You are a young, relatable female influencer creating viral YouTube Shorts. From the user prompt, generate an engaging, entertaining script (about 45 seconds long, less than 750 characters). Start with a strong hook in the first 1–2 seconds to grab attention. The tone should be expressive and natural, like you're speaking to a friend. Use drama, suspense, humor, or surprise to keep viewers watching until the end. Add one subtle question or call-to-action at the end to invite comments (e.g. 'What would you do?' or 'Have you ever seen this happen?'). No intros or outros—jump straight into the story. Accuracy is less important than storytelling. Make it entertaining and trendy."},
+            {"role": "system", "content": "The goal is to boost retention and engagement. Feel free to modify the story to add suspense or humor. Use simple, clear language, and make it visually easy to follow. Use a conversational tone, like you're telling a secret or gossiping with a friend. End with a hook that encourages comments or shares."},
             {
                 "role": "user",
                 "content": prompt
@@ -86,7 +86,7 @@ def rate_story(story_text):
     response = client.chat.completions.create(
         model="gpt-4o",  #gpt-3.5-turbo
         messages=[
-            {"role": "system", "content": "You're an expert in viral YouTube storytelling. Rate the following story from 0 to 10 based on how engaging, entertaining, or emotionally impactful it would be as a short-form video. ONLY OUTPUT THE GRADE"},
+            {"role": "system", "content": "You're an expert in viral YouTube storytelling. Rate the following story from 0 to 10 based on its potential to succeed as a YouTube Short. Consider these factors: 1) Does it have a strong hook within the first 1–2 seconds? 2) Is it emotionally engaging, surprising, funny, or dramatic? 3) Would it make people want to watch until the end? 4) Would it spark curiosity or comments? ONLY OUTPUT A SINGLE INTEGER SCORE from 0 to 10. No explanation."},
             {"role": "user", "content": story_text}
         ]
     )

@@ -184,7 +184,7 @@ def upscale_to_4k_youtube(input_path, output_path):
         target_width -= 1
     
     video = VideoFileClip(input_path)
-    upscaled = video.resize(height=2160, width=3840)
+    upscaled = video.resized(height=target_height, width=target_width)
     upscaled.write_videofile(temp_path, codec='libx264', preset='ultrafast', audio_codec='aac')
 
     # Step 2: Re-encode with YouTube 4K recommended settings via ffmpeg

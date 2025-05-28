@@ -142,7 +142,7 @@ def speedupAudio(audio_path, duration):
     # Return the new duration
     return len(sped_up_audio) / 1000  # Return duration in second
 
-def add_background_music(speech_path, music_path, output_path, music_volume_dB=-20):
+def add_background_music(speech_path, music_path, output_path, music_volume_dB=-15):
     speech = AudioSegment.from_file(speech_path)
     music = AudioSegment.from_file(music_path)
 

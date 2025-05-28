@@ -238,6 +238,7 @@ def main():
     if not my_args.project:
         create_subtitles(project)
         k_gpt4o.correct_srt_file(project)
+        k_srt.fix_srt_file(project)
         print("-- SRT CORRECTED --")
 
     music_path = select_background_music(script_path)

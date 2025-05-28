@@ -1,5 +1,8 @@
 from openai import OpenAI
 import os
+import re
+from datetime import timedelta, datetime
+import random
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -112,3 +115,56 @@ def transcribe(project, time_gap_threshold=0.5, max_words_per_chunk=1, punctuati
     srt_file_path = f"{script_path}/projects/{project}/speech.srt"
     with open(srt_file_path, "w", encoding="utf-8") as srt_file:
         srt_file.write("\n".join(srt_content))
+
+def srt_to_timedelta(t):
+    return datetime.strptime(t, "%H:%M:%S,%f") - datetime(1900, 1, 1)
+
+def timedelta_to_srt(td):
+    return str(td + datetime(1900, 1, 1)).split(' ')[1][:-3].replace('.', ',')
+
+def fix_srt_timing(blocks):
+    for idx in range(1, len(blocks)):
+        i, start, end, text = blocks[idx]
+        prev_i, prev_start, prev_end, prev_text = blocks[idx - 1]
+
+        if start == end:
+            start_td = srt_to_timedelta(start)
+            prev_start_td = srt_to_timedelta(prev_start)
+            prev_end_td = srt_to_timedelta(prev_end)
+
+            prev_duration = prev_end_td - prev_start_td
+            max_new_duration = min(timedelta(seconds=0.5), prev_duration / 2)
+            fix_duration = timedelta(milliseconds=random.randint(80, int(max_new_duration.total_seconds() * 1000)))
+
+            # Adjust previous block's end time
+            new_prev_end = start_td - fix_duration
+            if new_prev_end <= prev_start_td:
+                new_prev_end = prev_start_td + timedelta(milliseconds=10)
+                fix_duration = start_td - new_prev_end
+
+            # Update timings
+            blocks[idx - 1] = (prev_i, prev_start, timedelta_to_srt(new_prev_end), prev_text)
+            blocks[idx] = (i, timedelta_to_srt(start_td - fix_duration), timedelta_to_srt(start_td), text)
+    return blocks
+
+def rebuild_srt(blocks):
+    srt_output = []
+    for i, start, end, text_lines in blocks:
+        srt_output.append(f"{i}\n{start} --> {end}\n" + "\n".join(text_lines) + "\n")
+    return "\n".join(srt_output)
+
+def fix_srt_file(project):
+    srt_path = f"{script_path}/projects/{project}/speech.srt"
+    with open(srt_path, 'r', encoding='utf-8') as f:
+        srt_text = f.read()
+
+    blocksli = re.findall(r'(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\n(.*?)\n(?=\d+\n|\Z)', srt_text, re.S)
+    blocks = [(int(i), s, e, t.strip().splitlines()) for i, s, e, t in blocksli]
+
+    fixed_blocks = fix_srt_timing(blocks)
+    fixed_srt = rebuild_srt(fixed_blocks)
+
+    with open(srt_path, 'w', encoding='utf-8') as f:
+        f.write(fixed_srt)
+
+    print(f"✅ SRT fixed and saved")

@@ -92,7 +92,8 @@ def publish(file_path, title, description, tags):
     request = youtube.videos().insert(
         part="snippet,status",
         body=body,
-        media_body=media
+        media_body=media,
+        notifySubscribers=False
     )
 
     response = upload_chunks(request)

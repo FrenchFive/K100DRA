@@ -73,7 +73,7 @@ def ytb(project, prompt, reddit, rtitle, link):
 
     descrpt_tags = ""
     for tag in tags:
-        descrpt_tags += f"#{tag.strip().replace(" ","").lower()} "
+        descrpt_tags += f'#{tag.strip().replace(" ", "").lower()} '
 
     description += descrpt_tags
 

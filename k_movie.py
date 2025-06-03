@@ -18,7 +18,7 @@ def cropping(input, output, beg, duration):
     end_time = beg + duration
 
     # Subclip the video to the desired duration
-    subclip = video.subclipped(beg, end_time)
+    subclip = video.subclip(beg, end_time)
 
     # Resize the video to 1080x1920 (9:16 aspect ratio)
     resized_video = subclip.resized(height=1280).resized(width=720)
@@ -46,7 +46,14 @@ def cropping(input, output, beg, duration):
     cropped_video = resized_video.cropped(width=crop_width, height=crop_height, x_center=x_center, y_center=y_center)
 
     # Export the cropped and shortened video
-    cropped_video.write_videofile(output, codec="libx264", audio=False)
+    # Hide verbose moviepy logs but keep the progress bar
+    cropped_video.write_videofile(
+        output,
+        codec="libx264",
+        audio=False,
+        verbose=False,
+        logger="bar",
+    )
 
 def audio(video_in, audio_in, output):
 # Construct the ffmpeg command
@@ -68,7 +75,13 @@ def audio(video_in, audio_in, output):
 
     # Run the command using subprocess
     try:
-        subprocess.run(command, check=True)
+        # Suppress ffmpeg output to keep the terminal clean
+        subprocess.run(
+            command,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT,
+        )
     except:
         print("error")
 
@@ -122,7 +135,14 @@ def subtitles(srt_path, video_input, video_output):
     final_video = CompositeVideoClip([video] + subtitle_clips)
 
     # Write the final output
-    final_video.write_videofile(video_output, codec='libx264', audio_codec='aac')
+    # Hide verbose moviepy logs but keep the progress bar
+    final_video.write_videofile(
+        video_output,
+        codec='libx264',
+        audio_codec='aac',
+        verbose=False,
+        logger='bar',
+    )
 
     # Clean up
     video.close()
@@ -185,7 +205,14 @@ def upscale_to_4k_youtube(input_path, output_path):
     
     video = VideoFileClip(input_path)
     upscaled = video.resized(height=target_height, width=target_width)
-    upscaled.write_videofile(temp_path, codec='libx264', preset='ultrafast', audio_codec='aac')
+    upscaled.write_videofile(
+        temp_path,
+        codec='libx264',
+        preset='ultrafast',
+        audio_codec='aac',
+        verbose=False,
+        logger='bar',
+    )
 
     # Step 2: Re-encode with YouTube 4K recommended settings via ffmpeg
     command = [
@@ -207,7 +234,12 @@ def upscale_to_4k_youtube(input_path, output_path):
     ]
 
     try:
-        subprocess.run(command, check=True)
+        subprocess.run(
+            command,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT,
+        )
         print(f"✅ Exported YouTube 4K ready video to: {output_path}")
     except subprocess.CalledProcessError as e:
         print(f"❌ ffmpeg error: {e}")

@@ -4,6 +4,7 @@ import datetime
 from pydub import AudioSegment
 import argparse
 import shutil
+from tqdm import tqdm
 
 import k_reddit
 import k_gpt4o
@@ -220,36 +221,56 @@ def main():
     
     ensure_directories(script_path, project)
 
+    total_steps = 5
     if not my_args.project:
-        story, rtitle, reddit, link = fetch_and_generate_story(script_path, project, my_args.bp_r, my_args.bp_s, my_args.bp_a)
+        total_steps += 2
+
+    pbar = tqdm(total=total_steps, desc="Pipeline", ncols=80)
+
+    if not my_args.project:
+        story, rtitle, reddit, link = fetch_and_generate_story(
+            script_path, project, my_args.bp_r, my_args.bp_s, my_args.bp_a
+        )
+        pbar.update(1)
     else:
         story = "None"
         rtitle = "None"
         reddit = "None"
+        link = ""
 
     audio_path, duration = prepare_audio(project, script_path)
+    pbar.update(1)
 
     if not my_args.project:
         create_subtitles(project)
         k_gpt4o.correct_srt_file(project)
         k_srt.fix_srt_file(project)
         print("-- SRT CORRECTED --")
+        pbar.update(1)
 
     music_path = select_background_music(script_path)
-    combined_audio_path = os.path.join(script_path, "projects", project, "speech_with_music.mp3")
+    combined_audio_path = os.path.join(
+        script_path, "projects", project, "speech_with_music.mp3"
+    )
     k_movie.add_background_music(audio_path, music_path, combined_audio_path)
+    pbar.update(1)
 
     video_path, start_time = select_background_video(duration, script_path)
     create_final_video(project, video_path, start_time, duration, script_path)
+    pbar.update(1)
 
     title, description, tags = k_gpt4o.ytb(project, story, reddit, rtitle, link)
     print(f"-- TITLE : {title} --")
     print("-- DESCRIPTION AND TAGS GENERATED --")
+    pbar.update(1)
 
+    video_url, scheduled_time = k_youtube.publish(
+        f"{script_path}/projects/{project}/video_final.mp4", title, description, tags
+    )
+    print(f"🎬 Video scheduled for {scheduled_time}")
+    pbar.update(1)
 
-    # Uncomment this to publish:
-    k_youtube.publish(f"{script_path}/projects/{project}/video_final.mp4", title, description, tags)
-    print(f'-- VIDEO PUBLISHED --')
+    pbar.close()
 
 
 if __name__ == "__main__":

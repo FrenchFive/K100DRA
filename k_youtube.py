@@ -1,7 +1,7 @@
 import os
 import json
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 import google.auth.transport.requests
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -52,7 +52,9 @@ def get_scheduled_time():
     with open(json_file, "w") as file:
         json.dump({"time": next_time.isoformat()}, file)
 
-    return next_time.isoformat() + "Z"
+    # Convert to UTC (Zulu time) before returning
+    next_time_utc = next_time.astimezone(tz=timezone.utc)
+    return next_time_utc.isoformat().replace('+00:00', 'Z')
 
 def upload_chunks(request):
     response = None

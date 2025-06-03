@@ -51,8 +51,6 @@ def cropping(input, output, beg, duration):
         output,
         codec="libx264",
         audio=False,
-        verbose=False,
-        logger="bar",
     )
 
 def audio(video_in, audio_in, output):
@@ -140,8 +138,6 @@ def subtitles(srt_path, video_input, video_output):
         video_output,
         codec='libx264',
         audio_codec='aac',
-        verbose=False,
-        logger='bar',
     )
 
     # Clean up
@@ -210,8 +206,6 @@ def upscale_to_4k_youtube(input_path, output_path):
         codec='libx264',
         preset='ultrafast',
         audio_codec='aac',
-        verbose=False,
-        logger='bar',
     )
 
     # Step 2: Re-encode with YouTube 4K recommended settings via ffmpeg

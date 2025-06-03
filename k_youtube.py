@@ -91,6 +91,7 @@ def get_authenticated_service():
 def publish(file_path, title, description, tags):
     youtube = get_authenticated_service()
     scheduled_time = get_scheduled_time()
+    print(f"\n📅 Scheduled upload time: {scheduled_time}\n")
     body = {
         'snippet': {
             'title': (title[:96] + '...') if len(title) > 96 else title,
@@ -116,13 +117,13 @@ def publish(file_path, title, description, tags):
 
     response = upload_chunks(request)
     if response:
-        print("Upload Complete!")
+        print("\n✅ Upload complete!")
         # Extract video ID and print the link and title
         video_id = response['id']
         video_url = f"https://www.youtube.com/watch?v={video_id}"
-        print(f"Video URL: {video_url}")
-        print(f"Title: {title}")
-        return response
+        print(f"🔗 Video URL: {video_url}")
+        print(f"🏷️  Title: {title}\n")
+        return video_url, scheduled_time
     else:
-        print("Upload failed.")
-        return None
+        print("❌ Upload failed.")
+        return None, scheduled_time

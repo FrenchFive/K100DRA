@@ -18,7 +18,7 @@ def cropping(input, output, beg, duration):
     end_time = beg + duration
 
     # Subclip the video to the desired duration
-    subclip = video.subclip(beg, end_time)
+    subclip = video.subclipped(beg, end_time)
 
     # Resize the video to 1080x1920 (9:16 aspect ratio)
     resized_video = subclip.resized(height=1280).resized(width=720)

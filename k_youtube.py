@@ -13,30 +13,46 @@ SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 TOKEN_PATH = 'token.json'
 CREDENTIALS_PATH = 'youtube.json'
 
+UPLOAD_TIMES = [10, 16]
+
 def get_scheduled_time():
-    json_file = 'upload_time.json'
-    current_datetime = datetime.now()
-    current_date = current_datetime.date()
+    """Return the next upload slot and update ``upload_time.json``.
 
+    ``UPLOAD_TIMES`` defines the allowed hours (e.g. ``[10, 16]``). The script
+    reads the last scheduled time from ``upload_time.json`` and chooses the next
+    available hour for the current day. If all today's slots have passed, it
+    rolls over to the first slot of the following day. The chosen time is
+    written back to ``upload_time.json`` and returned in RFC3339 format.
+    """
+
+    json_file = "upload_time.json"
+    now = datetime.now()
+
+    last_time = None
     if os.path.exists(json_file):
-        with open(json_file, 'r') as file:
-            data = json.load(file)
-            scheduled_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+        with open(json_file, "r") as file:
+            try:
+                last_time = datetime.fromisoformat(json.load(file).get("time"))
+            except Exception:
+                last_time = None
 
-        if scheduled_date < current_date:
-            scheduled_date = current_date
-        else:
-            scheduled_date += timedelta(days=1)
-    else:
-        scheduled_date = current_date
+    base = last_time if last_time and last_time > now else now
 
-    # Set the time to 3 PM
-    scheduled_datetime = datetime.combine(scheduled_date, datetime.min.time()) + timedelta(hours=15)
+    next_time = None
+    for hour in UPLOAD_TIMES:
+        candidate = base.replace(hour=hour, minute=0, second=0, microsecond=0)
+        if candidate > base:
+            next_time = candidate
+            break
 
-    with open(json_file, 'w') as file:
-        json.dump({'date': scheduled_date.strftime('%Y-%m-%d')}, file)
+    if not next_time:
+        next_day = base + timedelta(days=1)
+        next_time = next_day.replace(hour=UPLOAD_TIMES[0], minute=0, second=0, microsecond=0)
 
-    return scheduled_datetime.isoformat() + "Z"
+    with open(json_file, "w") as file:
+        json.dump({"time": next_time.isoformat()}, file)
+
+    return next_time.isoformat() + "Z"
 
 def upload_chunks(request):
     response = None

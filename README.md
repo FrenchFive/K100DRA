@@ -77,6 +77,14 @@ python MAIN.py --bp_s       # Skip GPT storytelling
 python MAIN.py --bp_a       # Skip audio generation
 ```
 
+### 📅 Upload Scheduling
+
+`k_youtube.py` keeps a list of upload hours (``UPLOAD_TIMES``) and by default
+posts at **10:00** and **16:00** every day.  It checks `upload_time.json` for
+the previously scheduled slot and picks the next hour from the list; when all
+times for the day are used, scheduling rolls over to the first slot of the next
+day.  The file is updated after each call so uploads remain evenly spaced.
+
 ---
 
 ## 📂 Folder Structure

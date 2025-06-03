@@ -13,6 +13,18 @@ import k_movie
 import k_youtube
 
 
+def step_start(pbar, message):
+    """Announce the start of a step."""
+    pbar.set_description(message)
+    pbar.write(f"-> {message}")
+
+
+def step_done(pbar, message, result="done"):
+    """Update the bar and report the completion of a step."""
+    pbar.update(1)
+    pbar.write(f"<- {message}: {result}")
+
+
 # === Utility ===
 def ensure_directories(script_path, project):
     os.makedirs(f"{script_path}/projects/{project}", exist_ok=True)
@@ -221,54 +233,74 @@ def main():
     
     ensure_directories(script_path, project)
 
-    total_steps = 5
+    total_steps = 7
     if not my_args.project:
-        total_steps += 2
+        total_steps += 4
 
     pbar = tqdm(total=total_steps, desc="Pipeline", ncols=80)
+    pbar.write(f"Pipeline with {total_steps} steps")
 
     if not my_args.project:
+        step_start(pbar, "Fetching story")
         story, rtitle, reddit, link = fetch_and_generate_story(
             script_path, project, my_args.bp_r, my_args.bp_s, my_args.bp_a
         )
-        pbar.update(1)
+        step_done(pbar, "Fetching story")
     else:
         story = "None"
         rtitle = "None"
         reddit = "None"
         link = ""
 
+    step_start(pbar, "Preparing audio")
     audio_path, duration = prepare_audio(project, script_path)
-    pbar.update(1)
+    step_done(pbar, "Preparing audio", f"duration {duration:.1f}s")
 
     if not my_args.project:
+        step_start(pbar, "Generating subtitles")
         create_subtitles(project)
+        step_done(pbar, "Generating subtitles")
+
+        step_start(pbar, "Correcting subtitles")
         k_gpt4o.correct_srt_file(project)
+        step_done(pbar, "Correcting subtitles")
+
+        step_start(pbar, "Fixing SRT file")
         k_srt.fix_srt_file(project)
         print("-- SRT CORRECTED --")
-        pbar.update(1)
+        step_done(pbar, "Fixing SRT file")
 
+    step_start(pbar, "Selecting music")
     music_path = select_background_music(script_path)
+    step_done(pbar, "Selecting music")
+
+    step_start(pbar, "Adding music")
     combined_audio_path = os.path.join(
         script_path, "projects", project, "speech_with_music.mp3"
     )
     k_movie.add_background_music(audio_path, music_path, combined_audio_path)
-    pbar.update(1)
+    step_done(pbar, "Adding music")
 
+    step_start(pbar, "Selecting video")
     video_path, start_time = select_background_video(duration, script_path)
-    create_final_video(project, video_path, start_time, duration, script_path)
-    pbar.update(1)
+    step_done(pbar, "Selecting video")
 
+    step_start(pbar, "Creating final video")
+    create_final_video(project, video_path, start_time, duration, script_path)
+    step_done(pbar, "Creating final video")
+
+    step_start(pbar, "Generating metadata")
     title, description, tags = k_gpt4o.ytb(project, story, reddit, rtitle, link)
     print(f"-- TITLE : {title} --")
     print("-- DESCRIPTION AND TAGS GENERATED --")
-    pbar.update(1)
+    step_done(pbar, "Generating metadata")
 
+    step_start(pbar, "Publishing video")
     video_url, scheduled_time = k_youtube.publish(
         f"{script_path}/projects/{project}/video_final.mp4", title, description, tags
     )
     print(f"🎬 Video scheduled for {scheduled_time}")
-    pbar.update(1)
+    step_done(pbar, "Publishing video")
 
     pbar.close()
 

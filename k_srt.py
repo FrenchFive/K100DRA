@@ -154,17 +154,32 @@ def rebuild_srt(blocks):
     return "\n".join(srt_output)
 
 def fix_srt_file(project):
-    srt_path = f"{script_path}/projects/{project}/speech.srt"
-    with open(srt_path, 'r', encoding='utf-8') as f:
-        srt_text = f.read()
+    try :
+        srt_path = f"{script_path}/projects/{project}/speech.srt"
+        with open(srt_path, 'r', encoding='utf-8') as f:
+            srt_text = f.read()
 
-    blocksli = re.findall(r'(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\n(.*?)\n(?=\d+\n|\Z)', srt_text, re.S)
-    blocks = [(int(i), s, e, t.strip().splitlines()) for i, s, e, t in blocksli]
+        blocksli = re.findall(r'(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\n(.*?)\n(?=\d+\n|\Z)', srt_text, re.S)
+        blocks = [(int(i), s, e, t.strip().splitlines()) for i, s, e, t in blocksli]
 
-    fixed_blocks = fix_srt_timing(blocks)
-    fixed_srt = rebuild_srt(fixed_blocks)
+        fixed_blocks = fix_srt_timing(blocks)
+        fixed_srt = rebuild_srt(fixed_blocks)
 
-    with open(srt_path, 'w', encoding='utf-8') as f:
-        f.write(fixed_srt)
+        with open(srt_path, 'w', encoding='utf-8') as f:
+            f.write(fixed_srt)
 
-    print(f"✅ SRT fixed and saved")
+    except :
+        print("Error from CHATGPT - fixing original SRT")
+        srt_path = f"{script_path}/projects/{project}/speech.srt.bak"
+        with open(srt_path, 'r', encoding='utf-8') as f:
+            srt_text = f.read()
+
+        blocksli = re.findall(r'(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\n(.*?)\n(?=\d+\n|\Z)', srt_text, re.S)
+        blocks = [(int(i), s, e, t.strip().splitlines()) for i, s, e, t in blocksli]
+
+        fixed_blocks = fix_srt_timing(blocks)
+        fixed_srt = rebuild_srt(fixed_blocks)
+
+        srt_path = f"{script_path}/projects/{project}/speech.srt"
+        with open(srt_path, 'w', encoding='utf-8') as f:
+            f.write(fixed_srt)

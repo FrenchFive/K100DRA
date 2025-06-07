@@ -45,8 +45,8 @@ def length_video(video):
         videopy = VideoFileClip(video)
         return videopy.duration
 
-def cropping(input, output, beg, duration, use_gpu=False):
-    video = VideoFileClip(input)
+def cropping(input_video, output, beg, duration, use_gpu=False):
+    video = VideoFileClip(input_video)
     end_time = beg + duration
 
     # Subclip the video to the desired duration
@@ -113,8 +113,8 @@ def audio(video_in, audio_in, output, use_gpu=False):
             stdout=subprocess.DEVNULL,
             stderr=subprocess.STDOUT,
         )
-    except:
-        print("error")
+    except subprocess.CalledProcessError as e:
+        print(f"error running ffmpeg: {e}")
 
 
 def subtitles(srt_path, video_input, video_output, use_gpu=False):

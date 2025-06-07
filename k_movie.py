@@ -236,12 +236,15 @@ def upscale_to_4k_youtube(input_path, output_path, use_gpu=False):
     video = VideoFileClip(input_path)
     upscaled = video.resized(height=target_height, width=target_width)
     codec = 'h264_nvenc' if use_gpu and supports_nvenc() else 'libx264'
+    preset = 'fast' if codec == 'h264_nvenc' else 'ultrafast'
     upscaled.write_videofile(
         temp_path,
         codec=codec,
-        preset='ultrafast',
+        preset=preset,
         audio_codec='aac',
     )
+    video.close()
+    upscaled.close()
 
     # Step 2: Re-encode with YouTube 4K recommended settings via ffmpeg
     command = [

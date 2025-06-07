@@ -43,6 +43,43 @@ def audio_duration(path):
         return len(AudioSegment.from_file(path)) / 1000
 
 
+def get_gpu_name():
+    """Return the name of the first available NVIDIA GPU or None."""
+    try:
+        result = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=name",
+                "--format=csv,noheader",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip().splitlines()[0]
+    except Exception:
+        return None
+
+
+def detect_gpu_use(request_gpu: bool) -> bool:
+    """Print the chosen device and return True if GPU encoding will be used."""
+    if not request_gpu:
+        print("-- ENCODING WITH CPU --")
+        return False
+
+    if not k_movie.supports_nvenc():
+        print("-- NVENC NOT AVAILABLE, FALLING BACK TO CPU --")
+        return False
+
+    gpu_name = get_gpu_name()
+    if gpu_name:
+        print(f"-- ENCODING WITH GPU : {gpu_name} --")
+    else:
+        print("-- ENCODING WITH GPU (NAME UNKNOWN) --")
+    return True
+
+
 # === Pipeline Steps ===
 def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_story=False, bypass_audio=False):
     subreddits = [
@@ -221,7 +258,7 @@ def main():
     script_path = os.path.dirname(__file__)
     project = datetime.datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
     # GPU acceleration is enabled by default. Use --cpu to opt out.
-    use_gpu = not my_args.cpu
+    use_gpu = detect_gpu_use(not my_args.cpu)
 
     if my_args.project:
         projects_path = os.path.join(script_path, "projects")

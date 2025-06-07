@@ -320,7 +320,13 @@ def main():
     pbar.update(1)
 
     video_path, start_time = select_background_video(duration, script_path)
-    create_final_video(project, video_path, start_time, duration, script_path, use_gpu=use_gpu)
+    video_start_ts = time.time()
+    create_final_video(
+        project, video_path, start_time, duration, script_path, use_gpu=use_gpu
+    )
+    video_elapsed = time.time() - video_start_ts
+    video_elapsed_td = datetime.timedelta(seconds=int(video_elapsed))
+    print(f"-- VIDEO CREATION TIME : {video_elapsed_td} --")
     pbar.update(1)
 
     title, description, tags = k_gpt4o.ytb(project, story, reddit, rtitle, link)

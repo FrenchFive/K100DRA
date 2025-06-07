@@ -9,11 +9,43 @@ script_path = os.path.dirname(__file__)
 
 TARGET_ASPECT_RATIO = 9 / 16
 
-def length_video(video):
-    videopy = VideoFileClip(video)
-    return(videopy.duration)
 
-def cropping(input, output, beg, duration):
+def supports_nvenc():
+    """Return True if ffmpeg supports the h264_nvenc encoder."""
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-encoders"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=True,
+        )
+        return "h264_nvenc" in result.stdout
+    except Exception:
+        return False
+
+def length_video(video):
+    """Get video length quickly using ffprobe."""
+    cmd = [
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        video,
+    ]
+    try:
+        result = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=True
+        )
+        return float(result.stdout.strip())
+    except Exception:
+        videopy = VideoFileClip(video)
+        return videopy.duration
+
+def cropping(input, output, beg, duration, use_gpu=False):
     video = VideoFileClip(input)
     end_time = beg + duration
 
@@ -47,19 +79,20 @@ def cropping(input, output, beg, duration):
 
     # Export the cropped and shortened video
     # Hide verbose moviepy logs but keep the progress bar
+    codec = "h264_nvenc" if use_gpu and supports_nvenc() else "libx264"
     cropped_video.write_videofile(
         output,
-        codec="libx264",
+        codec=codec,
         audio=False,
     )
 
-def audio(video_in, audio_in, output):
+def audio(video_in, audio_in, output, use_gpu=False):
 # Construct the ffmpeg command
     command = [
         'ffmpeg',
         '-i', video_in,       # Input video file
         '-i', audio_in,       # Input audio file
-        '-c:v', 'libx264',
+        '-c:v', 'h264_nvenc' if use_gpu and supports_nvenc() else 'libx264',
         '-crf', '20',
         '-pix_fmt', 'yuv420p',
         '-b:a', '192k',
@@ -84,7 +117,7 @@ def audio(video_in, audio_in, output):
         print("error")
 
 
-def subtitles(srt_path, video_input, video_output):
+def subtitles(srt_path, video_input, video_output, use_gpu=False):
     # Load the video
     video = VideoFileClip(video_input)
 
@@ -134,9 +167,10 @@ def subtitles(srt_path, video_input, video_output):
 
     # Write the final output
     # Hide verbose moviepy logs but keep the progress bar
+    codec = 'h264_nvenc' if use_gpu and supports_nvenc() else 'libx264'
     final_video.write_videofile(
         video_output,
-        codec='libx264',
+        codec=codec,
         audio_codec='aac',
     )
 
@@ -179,7 +213,7 @@ def add_background_music(speech_path, music_path, output_path, music_volume_dB=-
     # Export the result
     combined.export(output_path, format="mp3")
 
-def upscale_to_4k_youtube(input_path, output_path):
+def upscale_to_4k_youtube(input_path, output_path, use_gpu=False):
     # Temporary file to hold the upscaled video without compression
     temp_path = "temp_upscaled.mp4"
 
@@ -201,9 +235,10 @@ def upscale_to_4k_youtube(input_path, output_path):
     
     video = VideoFileClip(input_path)
     upscaled = video.resized(height=target_height, width=target_width)
+    codec = 'h264_nvenc' if use_gpu and supports_nvenc() else 'libx264'
     upscaled.write_videofile(
         temp_path,
-        codec='libx264',
+        codec=codec,
         preset='ultrafast',
         audio_codec='aac',
     )
@@ -213,7 +248,7 @@ def upscale_to_4k_youtube(input_path, output_path):
         'ffmpeg',
         '-y',
         '-i', temp_path,
-        '-c:v', 'libx264',
+        '-c:v', 'h264_nvenc' if use_gpu and supports_nvenc() else 'libx264',
         '-b:v', '50M',               # High bitrate for 4K
         '-maxrate', '60M',
         '-bufsize', '100M',

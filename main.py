@@ -2,6 +2,7 @@ import os
 import random
 import datetime
 from pydub import AudioSegment
+import subprocess
 import argparse
 import shutil
 from tqdm import tqdm
@@ -21,8 +22,25 @@ def ensure_directories(script_path, project):
 
 
 def audio_duration(path):
-    duration = len(AudioSegment.from_file(path)) / 1000
-    return duration
+    """Return the audio duration in seconds using ffprobe for speed."""
+    cmd = [
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        path,
+    ]
+    try:
+        result = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=True
+        )
+        return float(result.stdout.strip())
+    except Exception:
+        # Fall back to pydub if ffprobe fails
+        return len(AudioSegment.from_file(path)) / 1000
 
 
 # === Pipeline Steps ===
@@ -169,7 +187,7 @@ def select_background_music(script_path):
     return os.path.join(music_folder, music_file)
 
 
-def create_final_video(project, video_path, start_time, duration, script_path):
+def create_final_video(project, video_path, start_time, duration, script_path, use_gpu=False):
     cropped = f"{script_path}/projects/{project}/video.mp4"
     audio = f"{script_path}/projects/{project}/speech_with_music.mp3"
     video_with_audio = f"{script_path}/projects/{project}/video_audio.mp4"
@@ -177,12 +195,12 @@ def create_final_video(project, video_path, start_time, duration, script_path):
     final_output = f"{script_path}/projects/{project}/video_final.mp4"
     srt_file = f"{script_path}/projects/{project}/speech.srt"
 
-    k_movie.cropping(video_path, cropped, start_time, duration)
-    k_movie.audio(cropped, audio, video_with_audio)
-    k_movie.subtitles(srt_file, video_with_audio, sub_output)
+    k_movie.cropping(video_path, cropped, start_time, duration, use_gpu=use_gpu)
+    k_movie.audio(cropped, audio, video_with_audio, use_gpu=use_gpu)
+    k_movie.subtitles(srt_file, video_with_audio, sub_output, use_gpu=use_gpu)
 
     """--- Upscaling to 4K for YouTube ---"""
-    k_movie.upscale_to_4k_youtube(sub_output, final_output)
+    k_movie.upscale_to_4k_youtube(sub_output, final_output, use_gpu=use_gpu)
     print("-- FINAL VIDEO GENERATED --")
 
 def args():
@@ -191,12 +209,19 @@ def args():
     parser.add_argument("--bp_s", action="store_true", help="Bypass story generation.")
     parser.add_argument("--bp_a", action="store_true", help="Bypass audio generation.")
     parser.add_argument("--project", action="store_true", help="Use latest project.")
+    parser.add_argument(
+        "--cpu",
+        action="store_true",
+        help="Disable GPU acceleration and encode using the CPU only.",
+    )
     return parser.parse_args()
 
 def main():
     my_args = args()
     script_path = os.path.dirname(__file__)
     project = datetime.datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
+    # GPU acceleration is enabled by default. Use --cpu to opt out.
+    use_gpu = not my_args.cpu
 
     if my_args.project:
         projects_path = os.path.join(script_path, "projects")
@@ -256,7 +281,7 @@ def main():
     pbar.update(1)
 
     video_path, start_time = select_background_video(duration, script_path)
-    create_final_video(project, video_path, start_time, duration, script_path)
+    create_final_video(project, video_path, start_time, duration, script_path, use_gpu=use_gpu)
     pbar.update(1)
 
     title, description, tags = k_gpt4o.ytb(project, story, reddit, rtitle, link)

@@ -75,6 +75,7 @@ python MAIN.py --project
 python MAIN.py --bp_r       # Skip Reddit fetching
 python MAIN.py --bp_s       # Skip GPT storytelling
 python MAIN.py --bp_a       # Skip audio generation
+python MAIN.py --cpu        # Force CPU-only encoding
 ```
 
 ### 📅 Upload Scheduling

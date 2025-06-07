@@ -54,13 +54,17 @@ def ytb(project, prompt, reddit, rtitle, link):
     )
     result = completion.choices[0].message.content.strip()
 
-    data = str(result).split("<!>")
-    title = data[0].strip().replace('"','')
-    description = data[1].strip()
-
-    
-    # Strip whitespace from each tag in the list
-    tags = [tag.strip() for tag in data[2].split(',')]
+    data = result.split("<!>")
+    if len(data) < 3:
+        print(f"-- GPT PARSE ERROR, unexpected output: {result!r} --")
+        title = data[0].strip().replace('"', '') if data else ""
+        description = data[1].strip() if len(data) > 1 else ""
+        tags = []
+    else:
+        title = data[0].strip().replace('"','')
+        description = data[1].strip()
+        # Strip whitespace from each tag in the list
+        tags = [tag.strip() for tag in data[2].split(',')]
 
     tags.append("reddit")
     tags.append(reddit)

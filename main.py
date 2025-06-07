@@ -6,6 +6,7 @@ import subprocess
 import argparse
 import shutil
 from tqdm import tqdm
+import time
 
 import k_reddit
 import k_gpt4o
@@ -255,6 +256,7 @@ def args():
 
 def main():
     my_args = args()
+    start_ts = time.time()
     script_path = os.path.dirname(__file__)
     project = datetime.datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
     # GPU acceleration is enabled by default. Use --cpu to opt out.
@@ -333,6 +335,9 @@ def main():
     pbar.update(1)
 
     pbar.close()
+    elapsed = time.time() - start_ts
+    elapsed_td = datetime.timedelta(seconds=int(elapsed))
+    print(f"-- TOTAL EXECUTION TIME : {elapsed_td} --")
 
 
 if __name__ == "__main__":

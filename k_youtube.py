@@ -92,6 +92,13 @@ def publish(file_path, title, description, tags):
     youtube = get_authenticated_service()
     scheduled_time = get_scheduled_time()
     print(f"\n📅 Scheduled upload time: {scheduled_time}\n")
+
+    # Sanitize the title because the YouTube API rejects empty or newline-only
+    # values which sometimes occur if GPT parsing fails.
+    title = title.replace("\n", " ").strip()
+    if not title:
+        print("-- WARNING: empty title, using fallback --")
+        title = "Untitled video"
     body = {
         'snippet': {
             'title': (title[:96] + '...') if len(title) > 96 else title,

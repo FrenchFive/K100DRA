@@ -108,8 +108,13 @@ def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_s
 
     # Check if links file exists, if not create it
     links_path = f"{script_path}/links.txt"
-    if not os.path.exists(f"{script_path}/links.txt"):
+    if not os.path.exists(links_path):
         with open(links_path, "w", encoding="utf-8") as file:
+            file.write("")
+
+    bad_links_path = f"{script_path}/bad_links.txt"
+    if not os.path.exists(bad_links_path):
+        with open(bad_links_path, "w", encoding="utf-8") as file:
             file.write("")
 
     list_of_ids = []
@@ -117,13 +122,28 @@ def fetch_and_generate_story(script_path, project, bypass_reddit=False, bypass_s
         for line in file:
             list_of_ids.append(line.strip())
 
+    bad_list_of_ids = []
+    with open(bad_links_path, "r", encoding="utf-8") as file:
+        for line in file:
+            bad_list_of_ids.append(line.strip())
+
     if not bypass_reddit:
         while rating < ideal_rating and attempts < max_attempts:
             subreddit = random.choice(subreddits)
-            title, text, link, id = k_reddit.random_post(subreddit, project) 
-            
-            if id not in list_of_ids:
-                rating = k_gpt4o.rate_story(text)
+            title, text, link, id = k_reddit.random_post(subreddit, project)
+
+            if id in list_of_ids or id in bad_list_of_ids:
+                attempts += 1
+                continue
+
+            rating = k_gpt4o.rate_story(text)
+
+            if rating < ideal_rating:
+                with open(bad_links_path, "a", encoding="utf-8") as file:
+                    file.write(f"{id}\n")
+                bad_list_of_ids.append(id)
+            else:
+                break
 
             attempts += 1
 

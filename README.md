@@ -114,7 +114,8 @@ K100DRA/
 ├── k_srt.py               ← Subtitle processor
 ├── k_youtube.py           ← Upload script
 ├── normalize_audio.py     ← Equalizes volume of files in `musics/`
-└── links.txt              ← Prevent reposting same stories
+├── links.txt              ← Prevent reposting same stories
+└── bad_links.txt          ← Keep track of poorly rated posts
 ```
 
 ---

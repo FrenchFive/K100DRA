@@ -41,50 +41,47 @@ def length_video(video):
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=True
         )
         return float(result.stdout.strip())
-    except Exception:
-        videopy = VideoFileClip(video)
-        return videopy.duration
+    except Exception as e:
+        print(f"ffprobe failed: {e}")
+        return 0.0
 
 def cropping(input_video, output, beg, duration, use_gpu=False):
-    video = VideoFileClip(input_video)
-    end_time = beg + duration
+    """Crop a segment of ``input_video`` to 9:16 and save to ``output``.
 
-    # Subclip the video to the desired duration
-    subclip = video.subclipped(beg, end_time)
+    This implementation uses ffmpeg directly instead of MoviePy which is
+    noticeably faster on large files.  When ``use_gpu`` is ``True`` and NVENC
+    support is detected, GPU encoding is enabled.
+    """
 
-    # Resize the video to 1080x1920 (9:16 aspect ratio)
-    resized_video = subclip.resized(height=1280).resized(width=720)
-
-    # Get the original video dimensions
-    video_width, video_height = resized_video.size
-
-    # Define the target aspect ratio (9:16)
-    target_aspect_ratio = TARGET_ASPECT_RATIO
-
-    # Calculate the target width based on the original height and target aspect ratio
-    crop_width = int(video_height * target_aspect_ratio)
-    crop_height = video_height
-
-    if crop_width % 2 != 0:
-        crop_width -= 1
-    if crop_height % 2 != 0:
-        crop_height -= 1
-
-    # Calculate the center of the video
-    x_center = video_width / 2
-    y_center = video_height / 2
-
-    # Crop the video to the new 9:16 aspect ratio, centered
-    cropped_video = resized_video.cropped(width=crop_width, height=crop_height, x_center=x_center, y_center=y_center)
-
-    # Export the cropped and shortened video
-    # Hide verbose moviepy logs but keep the progress bar
     codec = "h264_nvenc" if use_gpu and supports_nvenc() else "libx264"
-    cropped_video.write_videofile(
+    filter_str = "scale=-2:1280,crop=720:1280:(in_w-out_w)/2:(in_h-out_h)/2"
+
+    command = [
+        "ffmpeg",
+        "-y",
+        "-ss",
+        str(beg),
+        "-i",
+        input_video,
+        "-t",
+        str(duration),
+        "-vf",
+        filter_str,
+        "-c:v",
+        codec,
+        "-an",
         output,
-        codec=codec,
-        audio=False,
-    )
+    ]
+
+    try:
+        subprocess.run(
+            command,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT,
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"error running ffmpeg: {e}")
 
 def audio(video_in, audio_in, output, use_gpu=False):
 # Construct the ffmpeg command
@@ -118,6 +115,8 @@ def audio(video_in, audio_in, output, use_gpu=False):
 
 
 def subtitles(srt_path, video_input, video_output, use_gpu=False):
+    """Burn subtitles onto a video using MoviePy."""
+
     # Load the video
     video = VideoFileClip(video_input)
 
@@ -137,7 +136,6 @@ def subtitles(srt_path, video_input, video_output, use_gpu=False):
     max_lines = 2
     line_height = font_size * 1.4  # includes spacing
     box_height = int(max_lines * line_height)
-    
 
     # Create text clips for each subtitle
     for subtitle in subtitles:
@@ -151,13 +149,13 @@ def subtitles(srt_path, video_input, video_output, use_gpu=False):
             color=font_color,
             font=font_path,
             method='caption',
-            stroke_color='black', # outline colour
-            stroke_width=2, # thickness in pixels
-            size=(video.w, box_height)  # Full width, auto height
+            stroke_color='black',  # outline colour
+            stroke_width=2,  # thickness in pixels
+            size=(video.w, box_height)
         )
 
         # Set position and duration
-        text_clip = text_clip.with_position(('center','center')).with_start(start_time).with_duration(duration)
+        text_clip = text_clip.with_position(('center', 'center')).with_start(start_time).with_duration(duration)
 
         # Add to list
         subtitle_clips.append(text_clip)
@@ -166,7 +164,6 @@ def subtitles(srt_path, video_input, video_output, use_gpu=False):
     final_video = CompositeVideoClip([video] + subtitle_clips)
 
     # Write the final output
-    # Hide verbose moviepy logs but keep the progress bar
     codec = 'h264_nvenc' if use_gpu and supports_nvenc() else 'libx264'
     final_video.write_videofile(
         video_output,
@@ -214,10 +211,8 @@ def add_background_music(speech_path, music_path, output_path, music_volume_dB=-
     combined.export(output_path, format="mp3")
 
 def upscale_to_4k_youtube(input_path, output_path, use_gpu=False):
-    # Temporary file to hold the upscaled video without compression
-    temp_path = "temp_upscaled.mp4"
+    """Upscale ``input_path`` to 4K 9:16 using ffmpeg."""
 
-    # Step 1: Load and upscale using MoviePy
     print("Upscaling to 3840x2160...")
     target_ar = TARGET_ASPECT_RATIO
 
@@ -232,26 +227,16 @@ def upscale_to_4k_youtube(input_path, output_path, use_gpu=False):
         target_height -= 1
     if target_width % 2 != 0:
         target_width -= 1
-    
-    video = VideoFileClip(input_path)
-    upscaled = video.resized(height=target_height, width=target_width)
-    codec = 'h264_nvenc' if use_gpu and supports_nvenc() else 'libx264'
-    preset = 'fast' if codec == 'h264_nvenc' else 'ultrafast'
-    upscaled.write_videofile(
-        temp_path,
-        codec=codec,
-        preset=preset,
-        audio_codec='aac',
-    )
-    video.close()
-    upscaled.close()
 
-    # Step 2: Re-encode with YouTube 4K recommended settings via ffmpeg
+    scale_filter = f"scale={target_width}:{target_height}"
+    codec = 'h264_nvenc' if use_gpu and supports_nvenc() else 'libx264'
+
     command = [
         'ffmpeg',
         '-y',
-        '-i', temp_path,
-        '-c:v', 'h264_nvenc' if use_gpu and supports_nvenc() else 'libx264',
+        '-i', input_path,
+        '-vf', scale_filter,
+        '-c:v', codec,
         '-b:v', '50M',               # High bitrate for 4K
         '-maxrate', '60M',
         '-bufsize', '100M',
@@ -275,7 +260,3 @@ def upscale_to_4k_youtube(input_path, output_path, use_gpu=False):
         print(f"✅ Exported YouTube 4K ready video to: {output_path}")
     except subprocess.CalledProcessError as e:
         print(f"❌ ffmpeg error: {e}")
-    finally:
-        # Clean up temp file
-        if os.path.exists(temp_path):
-            os.remove(temp_path)

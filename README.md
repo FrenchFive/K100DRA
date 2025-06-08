@@ -86,7 +86,8 @@ Place your source music files in the `musics/` folder and run:
 python normalize_audio.py
 ```
 
-Each file will be adjusted to the same volume level in-place.
+Each file will be adjusted in-place. Files already within **1 dB** of the
+target volume are skipped.
 
 ### 📅 Upload Scheduling
 

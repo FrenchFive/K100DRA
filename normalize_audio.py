@@ -3,6 +3,7 @@ from pydub import AudioSegment
 
 MUSIC_DIR = os.path.join(os.path.dirname(__file__), 'musics')
 TARGET_DBFS = -20.0  # target volume in dBFS
+TOLERANCE_DB = 1.0   # skip files already within this range
 
 
 def match_target_amplitude(sound: AudioSegment, target_dBFS: float) -> AudioSegment:
@@ -24,6 +25,11 @@ def normalize_folder(folder: str = MUSIC_DIR) -> None:
             audio = AudioSegment.from_file(path)
         except Exception as e:
             print(f"Skipping {fname}: {e}")
+            continue
+
+        # Skip if already close enough to target volume
+        if abs(audio.dBFS - TARGET_DBFS) <= TOLERANCE_DB:
+            print(f"{fname} within {TOLERANCE_DB} dB of target, skipping")
             continue
 
         normalized = match_target_amplitude(audio, TARGET_DBFS)

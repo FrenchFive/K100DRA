@@ -78,6 +78,17 @@ python MAIN.py --bp_a       # Skip audio generation
 python MAIN.py --cpu        # Force CPU-only encoding (GPU is used by default)
 ```
 
+### 🔊 Normalize Audio Volume
+
+Place your source music files in the `musics/` folder and run:
+
+```bash
+python normalize_audio.py
+```
+
+Each file will be adjusted in-place. Files already within **1 dB** of the
+target volume are skipped.
+
 ### 📅 Upload Scheduling
 
 `k_youtube.py` keeps a list of upload hours (``UPLOAD_TIMES``) and by default
@@ -102,6 +113,7 @@ K100DRA/
 ├── k_movie.py             ← Video editor utils
 ├── k_srt.py               ← Subtitle processor
 ├── k_youtube.py           ← Upload script
+├── normalize_audio.py     ← Equalizes volume of files in `musics/`
 ├── links.txt              ← Prevent reposting same stories
 └── bad_links.txt          ← Keep track of poorly rated posts
 ```

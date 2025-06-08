@@ -34,7 +34,7 @@ def normalize_folder(folder: str = MUSIC_DIR) -> None:
 
         normalized = match_target_amplitude(audio, TARGET_DBFS)
         normalized.export(path, format=fname.rsplit('.', 1)[-1])
-        print(f"Normalized {fname}")
+        print(f"Normalized {fname} to {normalized.dBFS:.2f} dBFS")
 
 
 if __name__ == '__main__':

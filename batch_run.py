@@ -25,8 +25,8 @@ def main():
         description='Normalize audio then run main.py multiple times.'
     )
     parser.add_argument(
-        '-n', '--number', type=int, default=1,
-        help='Number of successful MAIN runs to execute'
+        '-n', '--number', type=int, default=10,
+        help='Number of successful MAIN runs to execute (default: 10)'
     )
     parser.add_argument(
         'main_args', nargs=argparse.REMAINDER,

@@ -127,7 +127,10 @@ def subtitles(srt_path, video_input, video_output, use_gpu=False):
     subtitle_clips = []
 
     # Define style settings
-    font_size = 35
+    # Scale font size with the height of the input video so subtitles remain
+    # legible after upscaling.  8% of the height closely matches the previous
+    # appearance when videos were heavily scaled.
+    font_size = int(video.h * 0.08)
     font_color = 'white'
     font_path = os.path.join(script_path, 'fonts', 'Montserrat_BLACK.ttf')
     print(f'-- FONT : {font_path} --')

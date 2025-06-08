@@ -69,6 +69,17 @@ python MAIN.py
 python MAIN.py --project
 ```
 
+### 🎞️ Batch Processing
+
+Run the audio normalizer and then execute `MAIN.py` repeatedly. Specify the
+number of successful runs with `-n`:
+
+```bash
+python batch_run.py -n 10
+```
+
+Failed runs are retried until the requested count is reached.
+
 ### ⛔ Skip Individual Steps (for testing)
 
 ```bash

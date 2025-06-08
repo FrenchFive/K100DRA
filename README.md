@@ -102,7 +102,8 @@ K100DRA/
 ├── k_movie.py             ← Video editor utils
 ├── k_srt.py               ← Subtitle processor
 ├── k_youtube.py           ← Upload script
-└── links.txt              ← Prevent reposting same stories
+├── links.txt              ← Prevent reposting same stories
+└── bad_links.txt          ← Keep track of poorly rated posts
 ```
 
 ---

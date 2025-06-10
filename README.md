@@ -69,6 +69,18 @@ python MAIN.py
 python MAIN.py --project
 ```
 
+### 🎞️ Batch Processing
+
+Run the audio normalizer and then execute `MAIN.py` repeatedly. By default, the
+script performs 10 successful runs. You can override this number with `-n`:
+
+```bash
+python batch_run.py        # runs MAIN until 10 successes
+python batch_run.py -n 3   # override to run 3 successes
+```
+
+Failed runs are retried until the requested count is reached.
+
 ### ⛔ Skip Individual Steps (for testing)
 
 ```bash

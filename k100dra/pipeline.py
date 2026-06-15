@@ -9,11 +9,22 @@ from __future__ import annotations
 
 import datetime
 import os
+import random
 import time
 from typing import Optional
 
 from . import config, llm, logs, reddit_source, selector, subtitles, video, voice, youtube
 from .events import ProgressReporter, RunCancelled
+
+
+def _resolve_mode(mode: Optional[str]) -> str:
+    """Decide 'story' (drama) vs 'news' for this run."""
+    m = (mode or config.settings.content_mode or "auto").lower()
+    if m == "news":
+        return "news"
+    if m in ("drama", "story", "stories"):
+        return "story"
+    return "news" if random.random() < config.settings.news_ratio else "story"
 
 
 def new_project_id() -> str:
@@ -25,7 +36,7 @@ def _artifact_url(project: str, filename: str) -> str:
 
 
 def run(reporter: ProgressReporter, project: Optional[str] = None,
-        upload: Optional[bool] = None) -> dict:
+        upload: Optional[bool] = None, mode: Optional[str] = None) -> dict:
     """Run the whole pipeline. Returns a summary dict; never raises for a normal
     stage failure (it records the error on the stage instead)."""
     config.ensure_dirs()
@@ -38,13 +49,15 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
 
     try:
         # 1 — STORY ---------------------------------------------------------- #
-        reporter.start("story", "Hunting for a story worth telling…")
-        post, rating = _find_story(reporter)
+        run_mode = _resolve_mode(mode)
+        reporter.start("story", f"Finding a {'news topic' if run_mode == 'news' else 'story'} worth telling…")
+        post, rating = _find_story(reporter, run_mode)
         reddit_source.mark_used(post.id)
         reporter.artifact("story", "title", post.title)
         reporter.artifact("story", "subreddit", post.subreddit)
         reporter.artifact("story", "rating", rating)
-        reporter.log(f"Found r/{post.subreddit} · “{post.title[:60]}” · {rating}/10")
+        reporter.artifact("story", "kind", post.kind)
+        reporter.log(f"[{post.kind}] r/{post.subreddit} · “{post.title[:60]}” · {rating}/10")
 
         # Generate the live chat FIRST so the script can read it back by name
         # (keeps her words and the on-screen chat coherent). Reused for the overlay.
@@ -62,7 +75,8 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
             frac = 0.45 + min(0.5, len(buf["t"]) / max(1, s.max_script_chars) * 0.5)
             reporter.progress("story", frac)
 
-        raw_script = llm.storyfy(post.title, post.text, project, on_token=on_token, chat=chat)
+        raw_script = llm.storyfy(post.title, post.text, project, on_token=on_token,
+                                 chat=chat, kind=post.kind)
         script = llm.strip_tags(raw_script)        # clean: display, subtitles, metadata
         reporter.artifact("story", "text", script)
         reporter.done("story", f"{len(script)} characters")
@@ -167,15 +181,19 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
         return {"error": str(exc)}
 
 
-def _find_story(reporter: ProgressReporter):
-    """Pull and rate posts until one clears the bar."""
+def _find_story(reporter: ProgressReporter, mode: str = "story"):
+    """Pull and rate posts (drama or news) until one clears the bar."""
     s = config.settings
     exclude = reddit_source.seen_ids()
     best = None
     for attempt in range(1, s.max_story_attempts + 1):
         reporter.check_stop()
-        sub = reddit_source.random_subreddit()
-        post = reddit_source.random_post(sub, exclude=exclude)
+        if mode == "news":
+            sub = reddit_source.random_news_subreddit()
+            post = reddit_source.random_news_post(sub, exclude=exclude)
+        else:
+            sub = reddit_source.random_subreddit()
+            post = reddit_source.random_post(sub, exclude=exclude)
         if post is None:
             continue
         exclude.add(post.id)

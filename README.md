@@ -130,6 +130,9 @@ REDDIT_USER_AGENT=K100DRA
 # Optional tuning
 K100DRA_AUTO_UPLOAD=true
 K100DRA_TARGET_DURATION=59
+# Content: auto (mix), drama (personal stories), or news (current events).
+# Also selectable per-run in the studio.
+K100DRA_CONTENT_MODE=auto
 ```
 
 YouTube upload is optional: drop your OAuth client `youtube.json` at the repo

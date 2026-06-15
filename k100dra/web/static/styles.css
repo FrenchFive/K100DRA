@@ -77,6 +77,7 @@ body {
 .btn.danger { border-color: rgba(255,84,112,0.5); color: var(--red); }
 .loop { color: var(--muted); font-size: 13px; }
 .loop input { width: 52px; background: var(--bg-2); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 7px; }
+.loop select { background: var(--bg-2); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 7px; font-size: 13px; }
 
 .overall-meta { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 7px; }
 .bar { position: relative; height: 10px; background: var(--bg-3); border-radius: 999px; overflow: hidden; }

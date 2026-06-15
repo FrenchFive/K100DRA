@@ -104,9 +104,25 @@ class Persona:
         return "\n".join(f"- {rule}" for rule in self.voice_rules)
 
     def story_system_prompt(self, target_seconds: float, max_chars: int,
-                            chat_samples=None) -> str:
+                            chat_samples=None, kind: str = "story") -> str:
         words = int(target_seconds * 2.6)
         tags = ", ".join(self.voice_tags)
+        if kind == "news":
+            premise = (
+                "This is a clip from your stream where you react to a REAL news story that is "
+                "happening RIGHT NOW, and to what people online are saying about it. You are "
+                "current, plugged-in, and you have takes.")
+            subject = "the news story and the public reaction below"
+            news_block = (
+                "\nBecause this is NEWS: make it feel current ('okay have you guys SEEN this', "
+                "'this just happened'). Explain what's actually going on so anyone gets it. Give "
+                "YOUR hot take and react to what people are saying. If it's a real tragedy or "
+                "death, do NOT make light of it, only cover the angle people are debating, "
+                "respectfully, or skip that energy.\n")
+        else:
+            premise = self.premise
+            subject = "the situation below"
+            news_block = ""
         chat_block = ""
         if chat_samples:
             sample = "\n".join(f"  {m}" for _, m in chat_samples[:6])
@@ -118,12 +134,13 @@ class Persona:
             )
         return (
             f"You ARE {self.name} (pronounced {self.pronounced}), {self.tagline}.\n"
-            f"{self.bio}\n\nFORMAT: {self.premise}\n\n"
+            f"{self.bio}\n\nFORMAT: {premise}\n\n"
             "Write a first-person, spoken-aloud clip of about "
             f"{int(target_seconds)} seconds (~{words} words, hard limit {max_chars} "
-            "characters) reacting to the situation below WITH your chat.\n\n"
+            f"characters) reacting to {subject} WITH your chat.\n\n"
             "Non-negotiable voice rules:\n"
             f"{self._rules_block()}\n"
+            f"{news_block}"
             f"{chat_block}\n"
             "Performance tags you may use (sparingly, right before the words they affect):\n"
             f"{tags}\n\n"
@@ -162,6 +179,8 @@ class Persona:
             "Score 0-4 for everyday low-stakes drama: picky eaters, mild family squabbles, "
             "roommate annoyances, minor rudeness, no twist, predictable, or you have to "
             "explain why anyone should care. A merely mildly-annoying story is a 3, not a 7.\n"
+            "Score 0 for real tragedy, death, graphic violence, war casualties, or partisan "
+            "political fights, those are not brand-safe for this channel.\n"
             "Respond with ONLY one integer from 0 to 10."
         )
 

@@ -160,6 +160,10 @@ class Settings:
     max_script_chars: int = field(default_factory=lambda: int(_env("K100DRA_MAX_CHARS", default="1200")))
     min_story_rating: int = field(default_factory=lambda: int(_env("K100DRA_MIN_RATING", default="8")))
     max_story_attempts: int = field(default_factory=lambda: int(_env("K100DRA_MAX_ATTEMPTS", default="30")))
+    # Content mode: "auto" mixes drama + news; "drama" = personal stories;
+    # "news" = current events / actuality she reacts to.
+    content_mode: str = field(default_factory=lambda: _env("K100DRA_CONTENT_MODE", default="auto"))
+    news_ratio: float = field(default_factory=lambda: float(_env("K100DRA_NEWS_RATIO", default="0.4")))
     music_volume_db: float = field(default_factory=lambda: float(_env("K100DRA_MUSIC_DB", default="-15")))
 
     # --- Publishing --------------------------------------------------------- #

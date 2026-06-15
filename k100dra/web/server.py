@@ -53,12 +53,13 @@ class RunManager:
     def is_running(self) -> bool:
         return bool(self.thread and self.thread.is_alive())
 
-    def start(self, demo: bool = False, upload: Optional[bool] = None, count: int = 1) -> dict:
+    def start(self, demo: bool = False, upload: Optional[bool] = None, count: int = 1,
+              mode: Optional[str] = None) -> dict:
         if self.is_running():
             return {"ok": False, "error": "A run is already in progress."}
         self._stop_all = False
         self.thread = threading.Thread(
-            target=self._worker, args=(demo, upload, max(1, count)), daemon=True)
+            target=self._worker, args=(demo, upload, max(1, count), mode), daemon=True)
         self.thread.start()
         return {"ok": True}
 
@@ -68,7 +69,8 @@ class RunManager:
             self.reporter.request_stop()
         return {"ok": True}
 
-    def _worker(self, demo: bool, upload: Optional[bool], count: int) -> None:
+    def _worker(self, demo: bool, upload: Optional[bool], count: int,
+                mode: Optional[str] = None) -> None:
         for _ in range(count):
             if self._stop_all:
                 break
@@ -80,7 +82,7 @@ class RunManager:
                 if demo:
                     demo_mod.run(self.reporter)
                 else:
-                    pipeline.run(self.reporter, project, upload=upload)
+                    pipeline.run(self.reporter, project, upload=upload, mode=mode)
             except Exception as exc:  # pragma: no cover - defensive
                 self.reporter.log(f"Run crashed: {exc}", level="error")
             if self.reporter and self.reporter.stop_requested:
@@ -142,6 +144,7 @@ async def run_real(payload: dict | None = None) -> JSONResponse:
         demo=bool(payload.get("demo")),
         upload=payload.get("upload"),
         count=int(payload.get("count", 1)),
+        mode=payload.get("mode"),
     ))
 
 

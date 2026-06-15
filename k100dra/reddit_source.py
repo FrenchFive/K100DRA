@@ -23,6 +23,13 @@ SUBREDDITS = [
     "survivinginfidelity", "JUSTNOMIL",
 ]
 
+# Current events / actuality. Lighter, shareable, debate-y news (kept brand-safe
+# by the rating + persona); the top comments give real context + public takes.
+NEWS_SUBREDDITS = [
+    "nottheonion", "UpliftingNews", "technology", "science", "Futurology",
+    "entertainment", "sports", "OutOfTheLoop", "worldnews", "news",
+]
+
 _reddit = None
 
 
@@ -48,6 +55,7 @@ class Post:
     title: str
     text: str
     url: str
+    kind: str = "story"   # "story" (drama) or "news" (current events)
 
 
 # --- usage memory ---------------------------------------------------------- #
@@ -93,3 +101,36 @@ def random_post(subreddit_name: str, exclude: Optional[Set[str]] = None) -> Opti
 
 def random_subreddit() -> str:
     return random.choice(SUBREDDITS)
+
+
+def random_news_subreddit() -> str:
+    return random.choice(NEWS_SUBREDDITS)
+
+
+def random_news_post(subreddit_name: str, exclude: Optional[Set[str]] = None) -> Optional[Post]:
+    """A current news post (link post) + its top comments as context/public takes."""
+    exclude = exclude or set()
+    subreddit = _client().subreddit(subreddit_name)
+    posts = [p for p in subreddit.hot(limit=75)
+             if p.id not in exclude and not p.over_18 and not p.stickied]
+    if not posts:
+        return None
+    chosen = random.choice(posts)
+
+    comments = []
+    try:
+        chosen.comment_sort = "top"
+        chosen.comments.replace_more(limit=0)
+        for c in chosen.comments:
+            body = (getattr(c, "body", "") or "").strip()
+            if body and body not in ("[deleted]", "[removed]") and len(body) > 12:
+                comments.append(body[:240])
+            if len(comments) >= 6:
+                break
+    except Exception:
+        pass
+
+    text = "\n".join(f"- {c}" for c in comments)
+    url = getattr(chosen, "url", "") or f"https://www.reddit.com{chosen.permalink}"
+    return Post(id=chosen.id, subreddit=subreddit_name, title=chosen.title,
+                text=text, url=url, kind="news")

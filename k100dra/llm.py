@@ -131,11 +131,16 @@ def rate_story(text: str) -> int:
 
 
 def storyfy(title: str, body: str, project: str,
-            on_token: Optional[Callable[[str], None]] = None, chat=None) -> str:
-    """Rewrite a story into a K100DRA script (streamed if ``on_token`` is given)."""
+            on_token: Optional[Callable[[str], None]] = None, chat=None,
+            kind: str = "story") -> str:
+    """Rewrite a story/news item into a K100DRA script (streamed if ``on_token``)."""
     s = config.settings
-    system = persona.story_system_prompt(s.target_duration, s.max_script_chars, chat_samples=chat)
-    user = f"{title}\n\n{body}"[:8000]
+    system = persona.story_system_prompt(s.target_duration, s.max_script_chars,
+                                         chat_samples=chat, kind=kind)
+    if kind == "news":
+        user = f"HEADLINE: {title}\n\nWHAT PEOPLE ARE SAYING:\n{body}"[:8000]
+    else:
+        user = f"{title}\n\n{body}"[:8000]
     text = _complete(s.model_story, system, user, temperature=0.9, max_tokens=1100, on_token=on_token)
 
     # Remove dashes (AI tell), keep performance tags for the voice engine.

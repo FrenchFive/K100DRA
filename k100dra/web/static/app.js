@@ -210,7 +210,10 @@ async function post(path, body) {
 }
 
 $("btn-start").onclick = async () => {
-  const res = await post("/api/run", { count: parseInt($("count").value || "1", 10) });
+  const res = await post("/api/run", {
+    count: parseInt($("count").value || "1", 10),
+    mode: $("mode").value,
+  });
   if (!res.ok) alert(res.error || "Could not start");
 };
 $("btn-demo").onclick = () => post("/api/run", { demo: true });

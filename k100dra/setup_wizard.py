@@ -181,12 +181,7 @@ def connect_youtube() -> Tuple[bool, str]:
 # --------------------------------------------------------------------------- #
 def ensure_dependencies(interactive: bool) -> bool:
     needed = ["openai", "praw", "pydub", "fastapi", "uvicorn", "dotenv", "requests"]
-    missing = []
-    for mod in needed:
-        try:
-            __import__(mod)
-        except Exception:
-            missing.append(mod)
+    missing = [m for m in needed if not _importable(m)]
     if not missing:
         _ok("Python packages installed")
         return True
@@ -205,9 +200,11 @@ def ensure_dependencies(interactive: bool) -> bool:
 
 
 def _importable(mod: str) -> bool:
+    """Is a module installed? Checked WITHOUT importing it (find_spec is fast;
+    actually importing openai/praw/uvicorn here is slow enough to look frozen)."""
+    import importlib.util
     try:
-        __import__(mod)
-        return True
+        return importlib.util.find_spec(mod) is not None
     except Exception:
         return False
 
@@ -232,6 +229,8 @@ def _configure_simple(title: str, env_key: str, validator: Callable[[str], Tuple
     _hr(title)
     cur = _current(env_key)
     if cur and not force:
+        if verify:
+            _info("verifying…")
         ok, msg = validator(cur) if verify else (True, "present (not verified)")
         (_ok if ok else _bad)(msg)
         if ok:
@@ -273,6 +272,8 @@ def _configure_reddit(verify: bool, interactive: bool, force: bool) -> bool:
     cid, csec = _current("REDDIT_CLIENT_ID"), _current("REDDIT_CLIENT_SECRET")
     agent = _current("REDDIT_USER_AGENT") or "K100DRA"
     if cid and csec and not force:
+        if verify:
+            _info("verifying…")
         ok, msg = validate_reddit(cid, csec, agent) if verify else (True, "present (not verified)")
         (_ok if ok else _bad)(msg)
         if ok:

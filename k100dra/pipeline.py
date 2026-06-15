@@ -98,9 +98,8 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
         # 5 — VIDEO ---------------------------------------------------------- #
         reporter.check_stop()
         reporter.start("video", "Choosing a fresh background…")
-        background = selector.select_background(duration)
+        background = selector.select_background(duration, log=reporter.log)
         reporter.artifact("video", "background", background.name)
-        reporter.log(f"Background: {background.name} @ {background.start:.0f}s")
 
         # Live-chat reactions for the stream overlay (best-effort).
         chat = []
@@ -112,11 +111,14 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
                 reporter.log(f"Chat overlay: {len(chat)} reactions")
 
         srt_path = os.path.join(config.project_dir(project), "speech.srt")
-        video.render_video(
-            project, words, background, mixed, srt_path, s.use_gpu,
-            on_progress=lambda f, m: reporter.progress("video", f if f is not None else reporter.state.stages["video"].progress, m),
-            chat=chat,
-        )
+        try:
+            video.render_video(
+                project, words, background, mixed, srt_path, s.use_gpu,
+                on_progress=lambda f, m: reporter.progress("video", f if f is not None else reporter.state.stages["video"].progress, m),
+                chat=chat,
+            )
+        finally:
+            selector.cleanup(background)  # remove any fetched YouTube segment
         preview = "video_styled.mp4" if os.path.exists(
             os.path.join(config.project_dir(project), "video_styled.mp4")) else "video_final.mp4"
         reporter.artifact("video", "video_url", _artifact_url(project, preview))

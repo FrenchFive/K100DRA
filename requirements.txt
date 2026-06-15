@@ -13,6 +13,9 @@ praw>=7.7
 pydub>=0.25
 python-dotenv>=1.0
 
+# --- YouTube background links (no local clutter); optional ---
+yt-dlp>=2024.1
+
 # --- YouTube upload (optional at runtime) ---
 google-api-python-client>=2.100
 google-auth-oauthlib>=1.2

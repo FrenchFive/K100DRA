@@ -1,0 +1,24 @@
+# K100DRA background links
+# ---------------------------------------------------------------------------
+# Use YouTube videos as backgrounds instead of storing big files on your drive.
+# For each render, K100DRA downloads ONLY the ~60s segment it needs (via yt-dlp)
+# and then deletes it, so nothing piles up locally.
+#
+# 1) Copy this file to "backgrounds.txt"      (cp backgrounds.example.txt backgrounds.txt)
+# 2) Install yt-dlp                            (pip install yt-dlp  — it's in requirements.txt)
+# 3) Paste one YouTube link per line below. Use long, looping, copyright-safe,
+#    visually-calm footage (subway surfers / minecraft parkour / satisfying /
+#    nature drone / ASMR — whatever fits your channel). More links = more variety;
+#    the picker rotates through them and avoids reusing the same part twice.
+#
+# Lines starting with '#' and blank lines are ignored.
+#
+# Tip: set the source mode in your .env if you want:
+#   K100DRA_BG_SOURCE=auto      # links if this file has any, else the videos/ folder (default)
+#   K100DRA_BG_SOURCE=youtube   # always use these links
+#   K100DRA_BG_SOURCE=local     # always use the videos/ folder
+#   K100DRA_KEEP_BG=false       # delete each downloaded segment after use (default)
+
+# https://www.youtube.com/watch?v=xxxxxxxxxxx
+# https://www.youtube.com/watch?v=yyyyyyyyyyy
+# https://youtu.be/zzzzzzzzzzz

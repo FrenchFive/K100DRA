@@ -40,7 +40,7 @@ python run.py --headless      # skip the menu → make one video in the terminal
 | **Voice** | OpenAI `tts-1` | **ElevenLabs**, tuned for big intonation/emphasis (with automatic OpenAI fallback) |
 | **Captions** | flat one-word MoviePy text | **animated word-by-word captions** — the spoken word pops & lights up in the brand colour |
 | **Visuals** | plain crop | colour grade, subtle motion, retention **progress bar** |
-| **Backgrounds** | random file + random start | **smart selection**: least-recently-used clip, fresh segment, length-matched |
+| **Backgrounds** | random local file + random start | **YouTube links** (download just the segment, then delete — no clutter) *or* local pool, with smart least-recently-used + fresh-segment selection |
 | **UI** | a `tqdm` bar | a **live web studio**: streaming script, audio + video previews, live chat, per-stage bars + ETA |
 | **Setup** | edit `.env` by hand | a **guided wizard** that inputs keys, connects Google, and validates everything |
 
@@ -132,8 +132,26 @@ root (a `token.json` is created on first authorisation).
 
 ### 3. Add backgrounds & music
 
-Put vertical (or large) clips in `videos/` and music in `musics/`. The selector
-takes care of variety and length-matching.
+Two ways to provide background footage (the selector handles variety,
+anti-repeat and length-matching either way):
+
+* **YouTube links — no local clutter (recommended).** Copy
+  `backgrounds.example.txt` → `backgrounds.txt`, paste in many YouTube URLs
+  (long, calm, copyright-safe footage), and `pip install yt-dlp`. For each
+  render K100DRA downloads **only the ~60s segment it needs** and **deletes it
+  afterwards**, so nothing piles up on your drive.
+* **Local files.** Drop vertical (or large) clips into `videos/`.
+
+Control it in `.env`:
+
+```env
+K100DRA_BG_SOURCE=auto      # links if backgrounds.txt has any, else videos/ (default)
+K100DRA_BG_SOURCE=youtube   # always use the links
+K100DRA_BG_SOURCE=local     # always use the videos/ folder
+K100DRA_KEEP_BG=false       # keep downloaded segments instead of deleting (default: delete)
+```
+
+Put music in `musics/`.
 
 ---
 
@@ -187,6 +205,7 @@ K100DRA/
 │   ├── voice.py             ← ElevenLabs voice (+ OpenAI fallback)
 │   ├── subtitles.py         ← Whisper word-level timing
 │   ├── selector.py          ← smart background + music selection
+│   ├── youtube_bg.py        ← on-demand YouTube background segments (yt-dlp)
 │   ├── video.py             ← visual engine (captions, facecam, chat, render)
 │   ├── youtube.py           ← upload + scheduling
 │   └── web/                 ← FastAPI server + dashboard (HTML/CSS/JS)

@@ -310,6 +310,41 @@ def _configure_reddit(verify: bool, interactive: bool, force: bool) -> bool:
             return False
 
 
+def _check_backgrounds(interactive: bool) -> bool:
+    _hr("Background footage")
+    from . import youtube_bg
+    links = config.background_links()
+    local = config._has_local_videos()
+
+    if links:
+        if youtube_bg.available():
+            _ok(f"{len(links)} YouTube background link(s) — yt-dlp ready (segments are "
+                "downloaded on demand and deleted after)")
+            return True
+        _bad(f"{len(links)} YouTube link(s) found, but yt-dlp isn't installed")
+        if interactive and _confirm("Install yt-dlp now?", True):
+            subprocess.run([sys.executable, "-m", "pip", "install", "yt-dlp"])
+            if youtube_bg.available():
+                _ok("yt-dlp installed")
+                return True
+            _bad("still missing — run: pip install yt-dlp")
+        else:
+            _info("Run: pip install yt-dlp")
+        return False
+
+    if local:
+        _ok("using local clips in videos/")
+        _info("Want zero clutter? Copy backgrounds.example.txt → backgrounds.txt, add "
+              "YouTube links, and install yt-dlp.")
+        return True
+
+    _bad("no backgrounds yet")
+    _info("Option A (no local clutter): cp backgrounds.example.txt backgrounds.txt,")
+    _info("  add YouTube links, then  pip install yt-dlp")
+    _info("Option B: drop vertical video files into the videos/ folder")
+    return False
+
+
 def _configure_youtube(interactive: bool, force: bool) -> bool:
     _hr("YouTube upload (optional)")
     ok, msg = validate_youtube()
@@ -359,6 +394,7 @@ def ensure_ready(verify: bool = True, force: bool = False,
                       required=False, help_url="https://elevenlabs.io/app/settings/api-keys",
                       verify=verify, interactive=interactive, force=force)
     _configure_reddit(verify=verify, interactive=interactive, force=force)
+    _check_backgrounds(interactive=interactive)
     _configure_youtube(interactive=interactive, force=force)
 
     config.reload()

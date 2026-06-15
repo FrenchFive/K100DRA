@@ -31,6 +31,7 @@ class Background:
     start: float
     duration: float
     name: str
+    temporary: bool = False   # a fetched YouTube segment we should delete after
 
 
 # --- usage memory ---------------------------------------------------------- #
@@ -93,12 +94,79 @@ def _pick_segment(total: float, duration: float, used: List[List[float]]) -> flo
     return round(random.uniform(0, max_start), 2)
 
 
-def select_background(duration: float) -> Background:
+def select_background(duration: float, log=None) -> Background:
+    """Pick a background. Prefers YouTube links (no local clutter) per config,
+    and always falls back to the local pool if needed."""
+    from . import youtube_bg
+
+    links = config.background_links()
+    mode = (config.settings.bg_source or "auto").lower()
+    use_youtube = (mode == "youtube") or (mode == "auto" and links and youtube_bg.available())
+
+    if use_youtube:
+        if not links:
+            if log:
+                log("backgrounds.txt has no links — using local videos/")
+        else:
+            try:
+                return _select_youtube(duration, links, log)
+            except Exception as exc:
+                if log:
+                    log(f"YouTube backgrounds failed ({exc}); falling back to local videos/")
+                if mode == "youtube" and not _list_media(config.VIDEOS_DIR, VIDEO_EXTS):
+                    raise
+
+    return _select_local(duration)
+
+
+def _select_youtube(duration: float, links: List[str], log=None) -> Background:
+    from . import youtube_bg
+    if not youtube_bg.available():
+        raise RuntimeError("yt-dlp is not installed (pip install yt-dlp)")
+
+    usage = _load_usage()
+    stats: Dict = usage.setdefault("files", {})
+
+    def key(url: str):
+        s = stats.get(url, {})
+        is_last = 1 if url == usage.get("last_video") and len(links) > 1 else 0
+        return (s.get("times_used", 0), is_last, s.get("last_used", 0))
+
+    # Try links in priority order so a dead/blocked link just gets skipped.
+    last_exc = None
+    for url in sorted(links, key=key):
+        s = stats.setdefault(url, {})
+        try:
+            total = s.get("duration") or youtube_bg.video_duration(url)
+            s["duration"] = total
+            clip = min(duration, max(1.0, total)) if total else duration
+            used = s.get("segments", [])
+            start = _pick_segment(total or duration + 10, clip, used)
+            vid = youtube_bg.short_id(url)
+            if log:
+                log(f"Fetching {clip:.0f}s background from YouTube ({vid}) @ {start:.0f}s")
+            path = youtube_bg.fetch_segment(url, start, clip)
+
+            used.append([start, start + clip])
+            s.update({"segments": used[-12:], "times_used": s.get("times_used", 0) + 1,
+                      "last_used": time.time()})
+            usage["last_video"] = url
+            _save_usage(usage)
+            return Background(path=path, start=0.0, duration=clip, name=vid, temporary=True)
+        except Exception as exc:
+            last_exc = exc
+            if log:
+                log(f"Skipping YouTube link {youtube_bg.short_id(url)}: {exc}")
+    raise RuntimeError(f"all YouTube links failed (last: {last_exc})")
+
+
+def _select_local(duration: float) -> Background:
     folder = config.VIDEOS_DIR
     files = _list_media(folder, VIDEO_EXTS)
     if not files:
         raise FileNotFoundError(
-            f"No background videos in {folder}. Drop some vertical clips in there."
+            "No backgrounds available. Add YouTube links to backgrounds.txt "
+            f"(and install yt-dlp), or drop clips into {folder}."
         )
 
     usage = _load_usage()
@@ -135,6 +203,19 @@ def select_background(duration: float) -> Background:
     _save_usage(usage)
 
     return Background(path=full, start=start, duration=clip, name=name)
+
+
+def cleanup(background: Optional[Background]) -> None:
+    """Delete a fetched YouTube segment so the drive stays clean."""
+    if not background or not background.temporary:
+        return
+    if config.settings.keep_bg_segments:
+        return
+    try:
+        if os.path.exists(background.path):
+            os.remove(background.path)
+    except Exception:
+        pass
 
 
 # --- music selection ------------------------------------------------------- #

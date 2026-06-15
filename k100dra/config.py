@@ -28,6 +28,7 @@ IMGS_DIR = os.path.join(ROOT, "imgs")
 # Small JSON state files kept at the repo root.
 LINKS_FILE = os.path.join(ROOT, "links.txt")
 BAD_LINKS_FILE = os.path.join(ROOT, "bad_links.txt")
+BACKGROUNDS_FILE = os.path.join(ROOT, "backgrounds.txt")   # YouTube background links
 VIDEO_USAGE_FILE = os.path.join(ROOT, "video_usage.json")
 UPLOAD_TIME_FILE = os.path.join(ROOT, "upload_time.json")
 
@@ -150,6 +151,12 @@ class Settings:
     auto_upload: bool = field(default_factory=lambda: _env_bool("K100DRA_AUTO_UPLOAD", True))
     upload_privacy: str = field(default_factory=lambda: _env("K100DRA_UPLOAD_PRIVACY", default="private"))
 
+    # --- Backgrounds -------------------------------------------------------- #
+    # "auto"   → use YouTube links from backgrounds.txt if present, else videos/
+    # "youtube"→ always use the links;  "local" → always use the videos/ folder.
+    bg_source: str = field(default_factory=lambda: _env("K100DRA_BG_SOURCE", default="auto"))
+    keep_bg_segments: bool = field(default_factory=lambda: _env_bool("K100DRA_KEEP_BG", False))
+
     # --- Encoding ----------------------------------------------------------- #
     use_gpu: bool = field(default_factory=lambda: _env_bool("K100DRA_USE_GPU", True))
 
@@ -228,6 +235,11 @@ def readiness(s: Optional[Settings] = None) -> dict:
             "label": "ffmpeg / ffprobe",
             "hint": "Install ffmpeg and make sure it is on PATH",
         },
+        "backgrounds": {
+            "ok": _has_backgrounds(),
+            "label": "Background footage",
+            "hint": "Add YouTube links to backgrounds.txt, or clips to videos/",
+        },
         "youtube": {
             "ok": os.path.exists(os.path.join(ROOT, "youtube.json")),
             "label": "YouTube upload",
@@ -238,6 +250,29 @@ def readiness(s: Optional[Settings] = None) -> dict:
     # Real (non-demo) runs require the non-optional pieces.
     can_run = all(c["ok"] for c in checks.values() if not c.get("optional"))
     return {"checks": checks, "can_run_real": can_run}
+
+
+def _has_local_videos() -> bool:
+    if not os.path.isdir(VIDEOS_DIR):
+        return False
+    return any(f != ".gitkeep" and os.path.isfile(os.path.join(VIDEOS_DIR, f))
+               for f in os.listdir(VIDEOS_DIR))
+
+
+def background_links() -> list:
+    """Non-empty, non-comment lines from backgrounds.txt."""
+    if not os.path.exists(BACKGROUNDS_FILE):
+        return []
+    out = []
+    for line in open(BACKGROUNDS_FILE, encoding="utf-8"):
+        line = line.strip()
+        if line and not line.startswith("#"):
+            out.append(line)
+    return out
+
+
+def _has_backgrounds() -> bool:
+    return bool(background_links()) or _has_local_videos()
 
 
 def ensure_dirs() -> None:

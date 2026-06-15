@@ -114,6 +114,17 @@ def hex_rgb(value: str) -> tuple:
     return int(v[0:2], 16), int(v[2:4], 16), int(v[4:6], 16)
 
 
+def _ff_path(path: str) -> str:
+    """Escape a filesystem path for use *inside* an ffmpeg filtergraph value.
+
+    Windows paths break filtergraphs: ``\`` is an escape char and ``:`` (drive
+    letter / option separator) splits options — e.g. ``c:\\Users\\...\\fonts``
+    gets mangled to ``Userschanc...fonts``. Forward-slash the separators and
+    escape the colon so the ass/subtitles ``fontsdir`` survives parsing.
+    """
+    return path.replace("\\", "/").replace(":", "\\:")
+
+
 def _facecam_chain(vis: "config.VisualStyle", round_override=None) -> str:
     """Filter body (between ``[2:v]`` and ``[cam]``) that frames the avatar.
 
@@ -433,12 +444,12 @@ def _captions_pass(base_video: str, audio: str, out: str,
 
     # Point libass at our bundled fonts so the brand faces actually load
     # (they are not installed system-wide).
-    parts = [f"[0:v]ass=captions.ass:fontsdir={config.FONTS_DIR}"]
+    parts = [f"[0:v]ass=captions.ass:fontsdir={_ff_path(config.FONTS_DIR)}"]
     if stream and vis.chat_overlay and has_chat:
         px, py, pw, ph = chat_panel()
         parts.append(f"drawbox=x={px}:y={py}:w={pw}:h={ph}:color=black@0.34:t=fill")
     if stream and vis.stream_mode:
-        parts.append(f"ass=overlay.ass:fontsdir={config.FONTS_DIR}")
+        parts.append(f"ass=overlay.ass:fontsdir={_ff_path(config.FONTS_DIR)}")
     if vis.progress_bar and draw_bar:
         parts.append(f"drawbox=x=0:y=ih-14:w='iw*t/{duration:.3f}':h=14:color={accent}@0.95:t=fill")
     vchain = ",".join(parts)
@@ -490,7 +501,7 @@ def _basic_render(src: str, audio: str, srt_path: str, out: str,
     fam = font_family_name(config.settings.font_path())
     style = f"FontName={fam},Fontsize=22,PrimaryColour=&H00FFFFFF,OutlineColour=&H000A0A0A,BorderStyle=1,Outline=3,Shadow=1,Alignment=2,MarginV=170"
     _run(["ffmpeg", "-y", "-i", base, "-i", audio,
-          "-vf", f"subtitles={os.path.basename(srt_path)}:fontsdir={config.FONTS_DIR}:force_style='{style}'",
+          "-vf", f"subtitles={os.path.basename(srt_path)}:fontsdir={_ff_path(config.FONTS_DIR)}:force_style='{style}'",
           "-map", "0:v:0", "-map", "1:a:0", "-c:v", _codec(use_gpu),
           "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", out],
          cwd=os.path.dirname(srt_path))

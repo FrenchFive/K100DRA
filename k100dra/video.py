@@ -281,7 +281,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     continue
                 if j == i:
                     if vis.caption_pop:
-                        pop = (r"{\c%s\fscx116\fscy116\t(0,130,\fscx100\fscy100)}%s{\rBase}"
+                        pop = (r"{\c%s\fscx105\fscy105\t(0,90,\fscx100\fscy100)}%s{\rBase}"
                                % (highlight, token))
                     else:
                         pop = r"{\c%s}%s{\rBase}" % (highlight, token)
@@ -315,11 +315,20 @@ def _ass_c(value: str) -> str:
 
 
 def _ass_disc(r: float) -> str:
-    """ASS vector path for a filled circle of radius ``r`` centred on the origin."""
+    """ASS path for a filled circle of radius ``r`` centred at (r, r).
+
+    Centring it at (r, r) lets us place it with ``\\an7\\pos(cx-r, cy-r)``, which
+    is reliable across libass — unlike ``\\an5`` on a drawing, which mis-anchors.
+    """
     r = round(r, 1)
     k = round(r * 0.5523, 1)
-    return (f"m 0 -{r} b {k} -{r} {r} -{k} {r} 0 b {r} {k} {k} {r} 0 {r} "
-            f"b -{k} {r} -{r} {k} -{r} 0 b -{r} -{k} -{k} -{r} 0 -{r}")
+    d = round(2 * r, 1)
+    rk = round(r + k, 1)
+    rmk = round(r - k, 1)
+    return (f"m {r} 0 b {rk} 0 {d} {rmk} {d} {r} "
+            f"b {d} {rk} {rk} {d} {r} {d} "
+            f"b {rmk} {d} 0 {rk} 0 {r} "
+            f"b 0 {rmk} {rmk} 0 {r} 0")
 
 
 def _talking_intervals(words, gap: float = 0.28, pad: float = 0.06) -> List[tuple]:
@@ -344,13 +353,15 @@ def _ring_events(words, duration: float) -> List[str]:
     if not vis.speaking_ring:
         return []
     cx, cy = RENDER_W // 2, vis.facecam_center_y
-    disc = _ass_disc(vis.facecam_width / 2 + vis.ring_glow)
+    r = vis.facecam_width / 2 + vis.ring_glow
+    disc = _ass_disc(r)
+    px, py = round(cx - r), round(cy - r)        # top-left of the disc bbox
     out = []
     for a, b in _talking_intervals(words):
         if b <= a:
             continue
         out.append(f"Dialogue: 0,{_ass_time(a)},{_ass_time(b)},Ring,,0,0,0,,"
-                   f"{{\\an5\\pos({cx},{cy})\\fad(70,120)\\blur12\\p1}}{disc}")
+                   f"{{\\an7\\pos({px},{py})\\fad(70,120)\\blur16\\p1}}{disc}")
     return out
 
 

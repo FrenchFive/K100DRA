@@ -78,11 +78,17 @@ def publish(file_path: str, title: str, description: str, tags: List[str],
     youtube = _authenticated_service()
     scheduled_time = get_scheduled_time()
 
-    title = title.replace("\n", " ").strip() or "Untitled video"
+    # YouTube rejects titles that are empty or contain '<' / '>'. Sanitize
+    # everything defensively so a stray separator/bracket can't fail the upload.
+    title = " ".join((title or "").replace("<", " ").replace(">", " ").split()).strip()
+    title = (title[:100]) or "Untitled"
+    description = (description or "").replace("<", "(").replace(">", ")")[:4900]
+    tags = [t.replace("<", "").replace(">", "").strip() for t in (tags or [])]
+    tags = [t for t in tags if t][:30]
     body = {
         "snippet": {
-            "title": (title[:96] + "...") if len(title) > 96 else title,
-            "description": (description[:4996] + "...") if len(description) > 4996 else description,
+            "title": title,
+            "description": description,
             "tags": tags,
             "categoryId": "24",
             "defaultLanguage": "en",

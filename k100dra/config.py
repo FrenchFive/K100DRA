@@ -115,7 +115,7 @@ class VisualStyle:
     facecam_frame: bool = True                # thin static ring
     facecam_ring: int = 6                     # static ring thickness
     speaking_ring: bool = True                # Discord-style glow while she talks
-    ring_glow: int = 16                       # glow band thickness
+    ring_glow: int = 22                       # glow band thickness (halo behind avatar)
     chat_font: str = "Montserrat_BLACK.ttf"   # readable font for chat/handle
 
 

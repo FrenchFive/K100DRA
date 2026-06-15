@@ -46,6 +46,13 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
         reporter.artifact("story", "rating", rating)
         reporter.log(f"Found r/{post.subreddit} · “{post.title[:60]}” · {rating}/10")
 
+        # Generate the live chat FIRST so the script can read it back by name
+        # (keeps her words and the on-screen chat coherent). Reused for the overlay.
+        chat = []
+        if config.settings.visuals.chat_overlay:
+            reporter.progress("story", 0.42, "Reading the chat…")
+            chat = llm.generate_chat(f"{post.title}\n{post.text}")
+
         reporter.progress("story", 0.45, "K100DRA is writing the script…")
         buf = {"t": ""}
 
@@ -55,7 +62,7 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
             frac = 0.45 + min(0.5, len(buf["t"]) / max(1, s.max_script_chars) * 0.5)
             reporter.progress("story", frac)
 
-        raw_script = llm.storyfy(post.title, post.text, project, on_token=on_token)
+        raw_script = llm.storyfy(post.title, post.text, project, on_token=on_token, chat=chat)
         script = llm.strip_tags(raw_script)        # clean: display, subtitles, metadata
         reporter.artifact("story", "text", script)
         reporter.done("story", f"{len(script)} characters")
@@ -106,14 +113,10 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
         background = selector.select_background(duration, log=reporter.log)
         reporter.artifact("video", "background", background.name)
 
-        # Live-chat reactions for the stream overlay (best-effort).
-        chat = []
-        if config.settings.visuals.chat_overlay:
-            reporter.progress("video", 0.01, "Spinning up the chat…")
-            chat = llm.generate_chat(script)
-            if chat:
-                reporter.artifact("video", "chat", [f"{u}: {m}" for u, m in chat][:8])
-                reporter.log(f"Chat overlay: {len(chat)} reactions")
+        # Reuse the chat generated in the story stage (same messages she read).
+        if chat:
+            reporter.artifact("video", "chat", [f"{u}: {m}" for u, m in chat][:8])
+            reporter.log(f"Chat overlay: {len(chat)} reactions")
 
         srt_path = os.path.join(config.project_dir(project), "speech.srt")
         try:

@@ -70,6 +70,7 @@ def storyfy(
     body: str,
     project: str,
     on_token: Optional[Callable[[str], None]] = None,
+    chat=None,
 ) -> str:
     """Rewrite a story into a K100DRA narration script.
 
@@ -79,7 +80,7 @@ def storyfy(
     client = _get_client()
     s = config.settings
     messages = [
-        {"role": "system", "content": persona.story_system_prompt(s.target_duration, s.max_script_chars)},
+        {"role": "system", "content": persona.story_system_prompt(s.target_duration, s.max_script_chars, chat_samples=chat)},
         {"role": "user", "content": f"{title}\n\n{body}"[:8000]},
     ]
 
@@ -149,7 +150,12 @@ def metadata(script: str, subreddit: str, source_title: str, link: str) -> Tuple
     )
     raw = resp.choices[0].message.content.strip()
     parts = [p.strip() for p in raw.split("<!>")]
-    title = (parts[0] if parts else "").replace('"', "").strip()
+    title = parts[0] if parts else ""
+    # Strip a leading "Title:" label, quotes and angle brackets (YouTube rejects < >).
+    title = re.sub(r"^\s*title\s*[:\-]\s*", "", title, flags=re.I)
+    title = title.replace('"', "").replace("<", "").replace(">", "").strip()
+    if not title:
+        title = (source_title or "Story time").strip()[:95]
     description = parts[1].strip() if len(parts) > 1 else ""
     tags = [t.strip() for t in parts[2].split(",")] if len(parts) > 2 else []
     tags = [t for t in tags if t]

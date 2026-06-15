@@ -125,6 +125,20 @@ def _ff_path(path: str) -> str:
     return path.replace("\\", "/").replace(":", "\\:")
 
 
+def _fontsdir(cwd: str) -> str:
+    """A filtergraph-safe fontsdir.
+
+    ffmpeg runs from the project folder, so we hand libass a *relative* path
+    (e.g. ``../../fonts``) instead of an absolute one. A relative path has no
+    drive-colon and no backslashes, which is the only form the filterchain
+    parser handles reliably on Windows (and it sidesteps spaces in the path).
+    """
+    try:
+        return os.path.relpath(config.FONTS_DIR, cwd).replace("\\", "/")
+    except Exception:
+        return _ff_path(config.FONTS_DIR)
+
+
 def _facecam_chain(vis: "config.VisualStyle", round_override=None) -> str:
     """Filter body (between ``[2:v]`` and ``[cam]``) that frames the avatar.
 
@@ -443,13 +457,14 @@ def _captions_pass(base_video: str, audio: str, out: str,
     accent = hex_to_ffmpeg(vis.accent_color)
 
     # Point libass at our bundled fonts so the brand faces actually load
-    # (they are not installed system-wide).
-    parts = [f"[0:v]ass=captions.ass:fontsdir={_ff_path(config.FONTS_DIR)}"]
+    # (they are not installed system-wide). Use a relative path — see _fontsdir.
+    fd = _fontsdir(cwd)
+    parts = [f"[0:v]ass=captions.ass:fontsdir={fd}"]
     if stream and vis.chat_overlay and has_chat:
         px, py, pw, ph = chat_panel()
         parts.append(f"drawbox=x={px}:y={py}:w={pw}:h={ph}:color=black@0.34:t=fill")
     if stream and vis.stream_mode:
-        parts.append(f"ass=overlay.ass:fontsdir={_ff_path(config.FONTS_DIR)}")
+        parts.append(f"ass=overlay.ass:fontsdir={fd}")
     if vis.progress_bar and draw_bar:
         parts.append(f"drawbox=x=0:y=ih-14:w='iw*t/{duration:.3f}':h=14:color={accent}@0.95:t=fill")
     vchain = ",".join(parts)
@@ -499,12 +514,13 @@ def _basic_render(src: str, audio: str, srt_path: str, out: str,
                  f"crop={RENDER_W}:{RENDER_H}", "-an",
           "-c:v", _codec(use_gpu), "-pix_fmt", "yuv420p", base])
     fam = font_family_name(config.settings.font_path())
+    pdir = os.path.dirname(srt_path)
     style = f"FontName={fam},Fontsize=22,PrimaryColour=&H00FFFFFF,OutlineColour=&H000A0A0A,BorderStyle=1,Outline=3,Shadow=1,Alignment=2,MarginV=170"
     _run(["ffmpeg", "-y", "-i", base, "-i", audio,
-          "-vf", f"subtitles={os.path.basename(srt_path)}:fontsdir={_ff_path(config.FONTS_DIR)}:force_style='{style}'",
+          "-vf", f"subtitles={os.path.basename(srt_path)}:fontsdir={_fontsdir(pdir)}:force_style='{style}'",
           "-map", "0:v:0", "-map", "1:a:0", "-c:v", _codec(use_gpu),
           "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", out],
-         cwd=os.path.dirname(srt_path))
+         cwd=pdir)
 
 
 # --------------------------------------------------------------------------- #

@@ -48,8 +48,15 @@ def flatten_markers(text: str) -> str:
 
 
 def clean_for_display(text: str) -> str:
-    """Tag-free, marker-free text for captions / subtitles / the UI."""
+    """Tag-free, marker-free text for captions / subtitles (words kept, in order)."""
     return strip_tags(flatten_markers(text))
+
+
+def display_script(text: str) -> str:
+    """Tag-free text for the UI script panel, with chat interjections shown
+    distinctly so you can see the second speaker."""
+    text = _CHAT_RE.sub(lambda m: f"\n💬 {m.group(1).strip()}\n", strip_tags(text))
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
 def voice_segments(text: str):

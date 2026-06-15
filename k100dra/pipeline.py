@@ -71,14 +71,14 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
 
         def on_token(delta: str):
             buf["t"] += delta
-            reporter.state.stages["story"].artifacts["text"] = llm.clean_for_display(buf["t"])
+            reporter.state.stages["story"].artifacts["text"] = llm.display_script(buf["t"])
             frac = 0.45 + min(0.5, len(buf["t"]) / max(1, s.max_script_chars) * 0.5)
             reporter.progress("story", frac)
 
         raw_script = llm.storyfy(post.title, post.text, project, on_token=on_token,
                                  chat=chat, kind=post.kind)
-        script = llm.clean_for_display(raw_script)  # clean: display, subtitles, metadata
-        reporter.artifact("story", "text", script)
+        script = llm.clean_for_display(raw_script)  # plain words for subtitles + metadata
+        reporter.artifact("story", "text", llm.display_script(raw_script))  # show chat lines
         reporter.done("story", f"{len(script)} characters")
         summary["title"] = post.title
 

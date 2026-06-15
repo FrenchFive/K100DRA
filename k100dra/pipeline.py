@@ -77,10 +77,13 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
         if duration > s.target_duration:
             reporter.progress("audio", 0.3, f"Trimming {duration:.0f}s → {s.target_duration:.0f}s")
             duration = video.speedup_audio(speech, s.target_duration)
-        music = selector.select_music()
+        music = selector.select_music(duration=duration, log=reporter.log)
         mixed = os.path.join(config.project_dir(project), "speech_with_music.mp3")
         reporter.progress("audio", 0.7, "Adding background music" if music else "No music found")
-        video.mix_music(speech, music, mixed, s.music_volume_db)
+        try:
+            video.mix_music(speech, music.path if music else None, mixed, s.music_volume_db)
+        finally:
+            selector.cleanup(music)  # remove any fetched YouTube music segment
         duration = video.audio_duration(mixed)
         reporter.artifact("audio", "duration", round(duration, 1))
         reporter.artifact("audio", "audio_url", _artifact_url(project, "speech_with_music.mp3"))

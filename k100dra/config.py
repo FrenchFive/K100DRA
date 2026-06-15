@@ -29,6 +29,7 @@ IMGS_DIR = os.path.join(ROOT, "imgs")
 LINKS_FILE = os.path.join(ROOT, "links.txt")
 BAD_LINKS_FILE = os.path.join(ROOT, "bad_links.txt")
 BACKGROUNDS_FILE = os.path.join(ROOT, "backgrounds.txt")   # YouTube background links
+MUSIC_LINKS_FILE = os.path.join(ROOT, "music.txt")         # YouTube music links
 VIDEO_USAGE_FILE = os.path.join(ROOT, "video_usage.json")
 UPLOAD_TIME_FILE = os.path.join(ROOT, "upload_time.json")
 
@@ -155,6 +156,7 @@ class Settings:
     # "auto"   → use YouTube links from backgrounds.txt if present, else videos/
     # "youtube"→ always use the links;  "local" → always use the videos/ folder.
     bg_source: str = field(default_factory=lambda: _env("K100DRA_BG_SOURCE", default="auto"))
+    music_source: str = field(default_factory=lambda: _env("K100DRA_MUSIC_SOURCE", default="auto"))
     keep_bg_segments: bool = field(default_factory=lambda: _env_bool("K100DRA_KEEP_BG", False))
 
     # --- Encoding ----------------------------------------------------------- #
@@ -259,16 +261,68 @@ def _has_local_videos() -> bool:
                for f in os.listdir(VIDEOS_DIR))
 
 
-def background_links() -> list:
-    """Non-empty, non-comment lines from backgrounds.txt."""
-    if not os.path.exists(BACKGROUNDS_FILE):
+# --- Link store (background + music YouTube links, editable from the UI) ---- #
+_LINK_FILES = {"background": BACKGROUNDS_FILE, "music": MUSIC_LINKS_FILE}
+_LINK_HEADERS = {
+    "background": "# K100DRA background links — one YouTube URL per line. Managed by the studio.\n",
+    "music": "# K100DRA music links — one YouTube URL per line. Managed by the studio.\n",
+}
+
+
+def links_path(kind: str) -> str:
+    return _LINK_FILES[kind]
+
+
+def is_link(text: str) -> bool:
+    return text.startswith("http://") or text.startswith("https://")
+
+
+def read_links(kind: str) -> list:
+    """Non-empty, non-comment lines from the given link file."""
+    path = _LINK_FILES.get(kind)
+    if not path or not os.path.exists(path):
         return []
     out = []
-    for line in open(BACKGROUNDS_FILE, encoding="utf-8"):
+    for line in open(path, encoding="utf-8"):
         line = line.strip()
         if line and not line.startswith("#"):
             out.append(line)
     return out
+
+
+def write_links(kind: str, links: list) -> list:
+    """Persist a de-duplicated list of links, preserving order."""
+    seen, clean = set(), []
+    for link in links:
+        link = link.strip()
+        if link and link not in seen:
+            seen.add(link)
+            clean.append(link)
+    with open(_LINK_FILES[kind], "w", encoding="utf-8") as fh:
+        fh.write(_LINK_HEADERS[kind])
+        fh.write("\n".join(clean) + ("\n" if clean else ""))
+    return clean
+
+
+def add_links(kind: str, urls) -> list:
+    current = read_links(kind)
+    for url in urls:
+        url = url.strip()
+        if is_link(url) and url not in current:
+            current.append(url)
+    return write_links(kind, current)
+
+
+def remove_link(kind: str, url: str) -> list:
+    return write_links(kind, [l for l in read_links(kind) if l != url])
+
+
+def background_links() -> list:
+    return read_links("background")
+
+
+def music_links() -> list:
+    return read_links("music")
 
 
 def _has_backgrounds() -> bool:

@@ -85,3 +85,38 @@ def fetch_segment(url: str, start: float, duration: float, out_dir: Optional[str
     if matches:
         return matches[0]
     raise RuntimeError("yt-dlp produced no output file")
+
+
+def fetch_audio(url: str, start: float, duration: float, out_dir: Optional[str] = None) -> str:
+    """Download just a music segment as mp3 and return its path.
+
+    Used for YouTube music links — keeps the drive clean (the segment is deleted
+    after mixing). The mixer loops/trims as needed, so a short chunk is fine.
+    """
+    import yt_dlp
+    out_dir = out_dir or cache_dir()
+    vid = short_id(url)
+    out_tmpl = os.path.join(out_dir, f"mus_{vid}.%(ext)s")
+
+    opts = {
+        "format": "bestaudio/best",
+        "outtmpl": out_tmpl,
+        "quiet": True,
+        "no_warnings": True,
+        "noplaylist": True,
+        "overwrites": True,
+        "download_ranges": yt_dlp.utils.download_range_func(None, [(start, start + duration)]),
+        "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3",
+                            "preferredquality": "192"}],
+    }
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        ydl.extract_info(url, download=True)
+
+    target = os.path.join(out_dir, f"mus_{vid}.mp3")
+    if os.path.exists(target):
+        return target
+    matches = [p for p in glob.glob(os.path.join(out_dir, f"mus_{vid}.*"))
+               if not p.endswith(".part")]
+    if matches:
+        return matches[0]
+    raise RuntimeError("yt-dlp produced no audio file")

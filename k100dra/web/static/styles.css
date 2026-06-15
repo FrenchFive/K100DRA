@@ -32,6 +32,16 @@ body {
 .logo span { color: var(--accent); }
 .tag { color: var(--muted); font-size: 12px; letter-spacing: 1px; margin-top: 2px; }
 
+/* ---- tabs ---- */
+.tabs { display: flex; gap: 6px; }
+.tab { background: transparent; border: 1px solid var(--line); color: var(--muted);
+  padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
+.tab:hover { color: var(--text); }
+.tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.view { display: none; }
+.view.active { display: block; }
+
 .live { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
 .live .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
 .live.on .dot { background: var(--green); box-shadow: 0 0 10px var(--green); }
@@ -124,7 +134,26 @@ video { width: 100%; max-height: 360px; border-radius: 10px; background: #000; }
 .logs .ln.error { color: var(--red); }
 .logs .ln .t { color: #5b6478; margin-right: 8px; }
 
+/* ---- sources tab ---- */
+.sources-intro { color: var(--muted); font-size: 14px; line-height: 1.6; padding: 18px 28px 0; max-width: 820px; }
+.sources { padding: 18px 28px 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.hint { font-size: 12px; color: var(--muted); margin: 0 0 12px; }
+.hint.warn { color: var(--amber); }
+.hint code { background: var(--bg-3); padding: 1px 6px; border-radius: 5px; color: var(--text); }
+.link-add { display: flex; gap: 10px; margin-bottom: 14px; align-items: flex-start; }
+.link-add textarea { flex: 1; background: var(--bg); border: 1px solid var(--line); color: var(--text);
+  border-radius: 10px; padding: 10px 12px; font-size: 13px; font-family: inherit; resize: vertical; min-height: 44px; }
+.link-add textarea:focus { outline: none; border-color: var(--accent); }
+.link-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.link-list li { display: flex; align-items: center; gap: 10px; background: var(--bg-3);
+  border-radius: 8px; padding: 8px 10px 8px 14px; font-size: 13px; }
+.link-list li.muted { color: var(--muted); justify-content: center; background: transparent; border: 1px dashed var(--line); }
+.link-list .url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, monospace; color: var(--text); }
+.link-list .rm { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 6px; }
+.link-list .rm:hover { color: var(--red); background: rgba(255,84,112,0.12); }
+
 @media (max-width: 900px) {
+  .sources { grid-template-columns: 1fr; }
   .stages { grid-template-columns: repeat(2, 1fr); }
   .panels { grid-template-columns: 1fr; }
   .controls { grid-template-columns: 1fr; }

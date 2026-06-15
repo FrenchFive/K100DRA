@@ -216,6 +216,63 @@ $("btn-start").onclick = async () => {
 $("btn-demo").onclick = () => post("/api/run", { demo: true });
 $("btn-stop").onclick = () => post("/api/stop", {});
 
+// ---- tabs + sources management ------------------------------------------- //
+const LINK_UI = {
+  background: { input: "bg-input", list: "bg-list", meta: "bg-meta", hint: "bg-hint", env: "BG" },
+  music: { input: "mus-input", list: "mus-list", meta: "mus-meta", hint: "mus-hint", env: "MUSIC" },
+};
+
+function switchView(view) {
+  document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.view === view));
+  document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === `view-${view}`));
+  if (view === "sources") { loadLinks("background"); loadLinks("music"); }
+}
+document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => switchView(t.dataset.view)));
+
+async function loadLinks(kind) {
+  try {
+    renderLinks(kind, await (await fetch(`/api/links/${kind}`)).json());
+  } catch (e) { /* ignore */ }
+}
+
+function renderLinks(kind, data) {
+  const ui = LINK_UI[kind];
+  const links = data.links || [];
+  $(ui.meta).textContent = `${links.length} link${links.length === 1 ? "" : "s"} · source: ${data.source}`;
+  const hint = $(ui.hint);
+  if (!data.ytdlp) {
+    hint.innerHTML = "⚠ yt-dlp isn't installed — run <code>pip install yt-dlp</code> to use these links.";
+    hint.className = "hint warn";
+  } else if (data.source === "local" && links.length) {
+    hint.innerHTML = `Source is <b>local</b>. Set <code>K100DRA_${ui.env}_SOURCE=auto</code> in .env to use these.`;
+    hint.className = "hint warn";
+  } else {
+    hint.textContent = links.length ? "Used automatically, rotating through your links." : "No links yet — paste some above.";
+    hint.className = "hint";
+  }
+  $(ui.list).innerHTML = links.length
+    ? links.map((url) =>
+        `<li><span class="url" title="${escapeHtml(url)}">${escapeHtml(url)}</span>` +
+        `<button class="rm" data-kind="${kind}" data-url="${escapeHtml(url)}">✕</button></li>`).join("")
+    : `<li class="muted">empty</li>`;
+  $(ui.list).querySelectorAll(".rm").forEach((b) => (b.onclick = () => removeLink(b.dataset.kind, b.dataset.url)));
+}
+
+async function addLinks(kind) {
+  const ui = LINK_UI[kind];
+  const text = $(ui.input).value.trim();
+  if (!text) return;
+  renderLinks(kind, await post(`/api/links/${kind}`, { add: text }));
+  $(ui.input).value = "";
+}
+
+async function removeLink(kind, url) {
+  renderLinks(kind, await post(`/api/links/${kind}`, { remove: url }));
+}
+
+$("bg-add").onclick = () => addLinks("background");
+$("mus-add").onclick = () => addLinks("music");
+
 loadReadiness();
 connect();
 setInterval(loadReadiness, 8000);

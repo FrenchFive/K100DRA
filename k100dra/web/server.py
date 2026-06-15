@@ -159,6 +159,41 @@ async def artifact(project: str, filename: str):
     return FileResponse(safe)
 
 
+VALID_KINDS = {"background", "music"}
+
+
+def _links_payload(kind: str) -> dict:
+    from .. import youtube_bg
+    source = config.settings.bg_source if kind == "background" else config.settings.music_source
+    return {
+        "kind": kind,
+        "links": config.read_links(kind),
+        "source": source,
+        "ytdlp": youtube_bg.available(),
+    }
+
+
+@app.get("/api/links/{kind}")
+async def get_links(kind: str) -> JSONResponse:
+    if kind not in VALID_KINDS:
+        return JSONResponse({"error": "unknown kind"}, status_code=400)
+    return JSONResponse(_links_payload(kind))
+
+
+@app.post("/api/links/{kind}")
+async def post_links(kind: str, payload: dict | None = None) -> JSONResponse:
+    if kind not in VALID_KINDS:
+        return JSONResponse({"error": "unknown kind"}, status_code=400)
+    payload = payload or {}
+    if payload.get("remove"):
+        config.remove_link(kind, str(payload["remove"]).strip())
+    if payload.get("add"):
+        import re
+        urls = [u.strip() for u in re.split(r"[\s,]+", str(payload["add"])) if u.strip()]
+        config.add_links(kind, urls)
+    return JSONResponse(_links_payload(kind))
+
+
 @app.websocket("/ws")
 async def ws_endpoint(websocket: WebSocket) -> None:
     await websocket.accept()

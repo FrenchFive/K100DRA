@@ -34,6 +34,13 @@ class Background:
     temporary: bool = False   # a fetched YouTube segment we should delete after
 
 
+@dataclass
+class Music:
+    path: str
+    name: str
+    temporary: bool = False
+
+
 # --- usage memory ---------------------------------------------------------- #
 def _load_usage() -> Dict:
     if os.path.exists(config.VIDEO_USAGE_FILE):
@@ -205,21 +212,41 @@ def _select_local(duration: float) -> Background:
     return Background(path=full, start=start, duration=clip, name=name)
 
 
-def cleanup(background: Optional[Background]) -> None:
-    """Delete a fetched YouTube segment so the drive stays clean."""
-    if not background or not background.temporary:
+def cleanup(media) -> None:
+    """Delete a fetched YouTube segment/audio so the drive stays clean."""
+    if not media or not getattr(media, "temporary", False):
         return
     if config.settings.keep_bg_segments:
         return
     try:
-        if os.path.exists(background.path):
-            os.remove(background.path)
+        if os.path.exists(media.path):
+            os.remove(media.path)
     except Exception:
         pass
 
 
 # --- music selection ------------------------------------------------------- #
-def select_music() -> Optional[str]:
+def select_music(duration: Optional[float] = None, log=None) -> Optional[Music]:
+    """Pick background music — YouTube links (no clutter) per config, else local."""
+    from . import youtube_bg
+
+    links = config.music_links()
+    mode = (config.settings.music_source or "auto").lower()
+    use_youtube = (mode == "youtube") or (mode == "auto" and links and youtube_bg.available())
+
+    if use_youtube and links:
+        try:
+            return _select_music_youtube(duration or 60.0, links, log)
+        except Exception as exc:
+            if log:
+                log(f"YouTube music failed ({exc}); falling back to local musics/")
+            if mode == "youtube" and not _list_media(config.MUSICS_DIR, MUSIC_EXTS):
+                return None
+
+    return _select_music_local()
+
+
+def _select_music_local() -> Optional[Music]:
     files = _list_media(config.MUSICS_DIR, MUSIC_EXTS)
     if not files:
         return None
@@ -229,4 +256,44 @@ def select_music() -> Optional[str]:
     chosen = random.choice(choices)
     usage["last_music"] = chosen
     _save_usage(usage)
-    return os.path.join(config.MUSICS_DIR, chosen)
+    return Music(path=os.path.join(config.MUSICS_DIR, chosen), name=chosen)
+
+
+def _select_music_youtube(duration: float, links: List[str], log=None) -> Music:
+    from . import youtube_bg
+    if not youtube_bg.available():
+        raise RuntimeError("yt-dlp is not installed (pip install yt-dlp)")
+
+    usage = _load_usage()
+    stats: Dict = usage.setdefault("music", {})
+
+    def key(url: str):
+        s = stats.get(url, {})
+        is_last = 1 if url == usage.get("last_music_link") and len(links) > 1 else 0
+        return (s.get("times_used", 0), is_last, s.get("last_used", 0))
+
+    target = max(duration, 60.0)
+    last_exc = None
+    for url in sorted(links, key=key):
+        s = stats.setdefault(url, {})
+        try:
+            total = s.get("duration") or youtube_bg.video_duration(url)
+            s["duration"] = total
+            clip = min(target, total) if total else target
+            start = _pick_segment(total or target + 30, clip, s.get("segments", []))
+            vid = youtube_bg.short_id(url)
+            if log:
+                log(f"Fetching music from YouTube ({vid}) @ {start:.0f}s")
+            path = youtube_bg.fetch_audio(url, start, clip)
+            seg = s.get("segments", [])
+            seg.append([start, start + clip])
+            s.update({"segments": seg[-12:], "times_used": s.get("times_used", 0) + 1,
+                      "last_used": time.time()})
+            usage["last_music_link"] = url
+            _save_usage(usage)
+            return Music(path=path, name=vid, temporary=True)
+        except Exception as exc:
+            last_exc = exc
+            if log:
+                log(f"Skipping music link {youtube_bg.short_id(url)}: {exc}")
+    raise RuntimeError(f"all music links failed (last: {last_exc})")

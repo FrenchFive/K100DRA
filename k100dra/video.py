@@ -243,8 +243,10 @@ def _group(words, size: int):
 
 def build_ass(words, out_path: str, vis: "config.VisualStyle", font_family: str) -> str:
     """Write an ASS file with animated, word-highlighted captions."""
-    fontsize = int(RENDER_H * 0.052)          # ~100px at 1080×1920
-    margin_v = int(RENDER_H * 0.30)           # sit in the lower third
+    fontsize = int(RENDER_H * 0.046)          # ~88px; condensed font fits well
+    # Sit just below the centred avatar (top-anchored so it grows downward).
+    cap_top = vis.facecam_center_y + vis.facecam_width // 2 + 46
+    mx = vis.caption_margin_x
     primary = hex_to_ass(vis.caption_color)
     highlight = hex_to_ass(vis.caption_highlight)
     outline = hex_to_ass(vis.caption_outline)
@@ -253,12 +255,12 @@ def build_ass(words, out_path: str, vis: "config.VisualStyle", font_family: str)
 ScriptType: v4.00+
 PlayResX: {RENDER_W}
 PlayResY: {RENDER_H}
-WrapStyle: 2
+WrapStyle: 0
 ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Base,{font_family},{fontsize},{primary},{highlight},{outline},&H64000000,-1,0,0,0,100,100,1,0,1,{vis.caption_outline_width},{vis.caption_shadow},2,60,60,{margin_v},1
+Style: Base,{font_family},{fontsize},{primary},{highlight},{outline},&H64000000,-1,0,0,0,100,100,1,0,1,{vis.caption_outline_width},{vis.caption_shadow},8,{mx},{mx},{cap_top},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -297,12 +299,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
 
 # --------------------------------------------------------------------------- #
-# Stream-clip overlay (handle, LIVE/CLIP badges, live chat)
+# Overlay: centered avatar speaking-ring, bottom chat, handle
 # --------------------------------------------------------------------------- #
-# Chat panel geometry (at 1080×1920), shared by the ASS author and the ffmpeg
-# backdrop so they line up.
-CHAT_X, CHAT_Y, CHAT_LINE_H, CHAT_W = 42, 660, 66, 600
-# Chat-handle colours so usernames look like a real, varied chat.
+CHAT_X = 70                 # left margin for chat
+CHAT_BOTTOM = 1700          # baseline of the newest (lowest) chat line
+CHAT_LINE_H = 58
+HANDLE_Y = 1815
 CHAT_USER_COLORS = ["#FF6B6B", "#FFD93D", "#6BCB77", "#4D96FF", "#FF6FB5", "#C77DFF"]
 
 
@@ -312,43 +314,79 @@ def _ass_c(value: str) -> str:
     return f"&H{v[4:6]}{v[2:4]}{v[0:2]}&".upper()
 
 
-def chat_panel() -> tuple:
+def _ass_disc(r: float) -> str:
+    """ASS vector path for a filled circle of radius ``r`` centred on the origin."""
+    r = round(r, 1)
+    k = round(r * 0.5523, 1)
+    return (f"m 0 -{r} b {k} -{r} {r} -{k} {r} 0 b {r} {k} {k} {r} 0 {r} "
+            f"b -{k} {r} -{r} {k} -{r} 0 b -{r} -{k} -{k} -{r} 0 -{r}")
+
+
+def _talking_intervals(words, gap: float = 0.28, pad: float = 0.06) -> List[tuple]:
+    """Merge words into the spans where she is actually talking."""
+    if not words:
+        return []
+    segs = []
+    s, e = words[0].start, words[0].end
+    for w in words[1:]:
+        if w.start - e <= gap:
+            e = max(e, w.end)
+        else:
+            segs.append((s, e))
+            s, e = w.start, w.end
+    segs.append((s, e))
+    return [(max(0.0, a - pad), b + pad) for a, b in segs]
+
+
+def _ring_events(words, duration: float) -> List[str]:
+    """Discord-style glow that appears while she talks, fades on pauses."""
     vis = config.settings.visuals
-    k = max(1, vis.chat_lines_visible)
-    return (CHAT_X - 16, CHAT_Y - 14, CHAT_W, k * CHAT_LINE_H + 24)
+    if not vis.speaking_ring:
+        return []
+    cx, cy = RENDER_W // 2, vis.facecam_center_y
+    disc = _ass_disc(vis.facecam_width / 2 + vis.ring_glow)
+    out = []
+    for a, b in _talking_intervals(words):
+        if b <= a:
+            continue
+        out.append(f"Dialogue: 0,{_ass_time(a)},{_ass_time(b)},Ring,,0,0,0,,"
+                   f"{{\\an5\\pos({cx},{cy})\\fad(70,120)\\blur12\\p1}}{disc}")
+    return out
 
 
-def _rolling_chat_events(messages, duration: float, k: int, chat6: str) -> List[str]:
-    """Render chat as a rolling stack: newest at the bottom, scrolling up."""
+def _bottom_chat_events(messages, duration: float, k: int, chat6: str) -> List[str]:
+    """Live chat, newest at the bottom, scrolling up — anchored to the bottom."""
     m = len(messages)
     if m == 0:
         return []
     t0, t1 = 1.4, max(3.0, duration - 1.4)
     times = [t0 + (t1 - t0) * i / m for i in range(m)] + [duration]
-    events: List[str] = []
+    out: List[str] = []
     for i, (user, msg) in enumerate(messages):
         user_c = _ass_c(CHAT_USER_COLORS[i % len(CHAT_USER_COLORS)])
-        for p in range(k):                      # p newer messages have arrived
+        msg = _clean(msg)
+        if len(msg) > 34:
+            msg = msg[:33].rstrip() + "…"
+        for p in range(k):                       # p newer messages have arrived
             if i + p >= len(times) - 1:
                 break
-            seg_start = times[i + p]
-            seg_end = times[i + p + 1]
+            seg_start, seg_end = times[i + p], times[i + p + 1]
             if seg_end <= seg_start:
                 continue
-            slot = k - 1 - p                     # bottom slot is newest
-            y = CHAT_Y + slot * CHAT_LINE_H
+            y = CHAT_BOTTOM - p * CHAT_LINE_H     # p=0 newest -> bottom line
             fade = r"\fad(120,0)" if p == 0 else ""
-            text = (f"{{\\an7\\pos({CHAT_X},{y}){fade}\\c{user_c}}}{_clean(user)}"
-                    f"{{\\c{chat6}}}: {_clean(msg)}")
-            events.append(f"Dialogue: 1,{_ass_time(seg_start)},{_ass_time(seg_end)},Chat,,0,0,0,,{text}")
-    return events
+            text = (f"{{\\an1\\pos({CHAT_X},{y}){fade}\\c{user_c}}}{_clean(user)}"
+                    f"{{\\c{chat6}}}: {msg}")
+            out.append(f"Dialogue: 1,{_ass_time(seg_start)},{_ass_time(seg_end)},Chat,,0,0,0,,{text}")
+    return out
 
 
-def build_overlay_ass(messages, duration: float, out_path: str, font_family: str) -> str:
-    """Write the stream-UI ASS: handle, LIVE/CLIP badges and the live chat."""
+def build_overlay_ass(words, messages, duration: float, out_path: str, font_family: str) -> str:
+    """Write the overlay ASS: speaking glow ring, bottom chat and the handle."""
     vis = config.settings.visuals
     accent6 = _ass_c(vis.accent_color)
     chat6 = _ass_c(vis.chat_color)
+    ring_fill = hex_to_ass(vis.accent_color, 0x55)
     k = max(1, vis.chat_lines_visible)
     full = _ass_time(duration)
 
@@ -361,27 +399,20 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Badge,{font_family},50,&H00FFFFFF,&H000000FF,&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,4,2,7,0,0,0,1
-Style: Chat,{font_family},40,{chat6},&H000000FF,&H00101010,&H80000000,0,0,0,0,100,100,0,0,1,3,1,7,0,0,0,1
+Style: Ring,{font_family},20,{ring_fill},&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,5,0,0,0,1
+Style: Chat,{font_family},38,{chat6},&H000000FF,&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,3,1,1,0,0,0,1
+Style: Handle,{font_family},40,{accent6},&H000000FF,&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,3,1,2,0,0,0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
 
-    events: List[str] = []
-    # With the facecam on, the handle + LIVE sit beside it as a stream
-    # "nameplate"; otherwise the handle is the top-left badge.
-    if vis.facecam and os.path.exists(config.settings.facecam_path()):
-        hx, hy = 42 + vis.facecam_width + 26, 70
-    else:
-        hx, hy = 42, 46
-    events.append(f"Dialogue: 2,0:00:00.00,{full},Badge,,0,0,0,,{{\\an7\\pos({hx},{hy})\\c{accent6}}}{_clean(vis.handle)}")
-    if vis.live_badge:
-        events.append(f"Dialogue: 2,0:00:00.00,{full},Badge,,0,0,0,,{{\\an7\\pos({hx},{hy + 60})\\fscx80\\fscy80\\c&H3D2EFF&}}● LIVE")
-    if vis.clip_badge:
-        events.append(f"Dialogue: 2,0:00:00.00,{full},Badge,,0,0,0,,{{\\an9\\pos(1038,52)\\fscx76\\fscy76}}CLIP")
+    events: List[str] = _ring_events(words, duration)
     if vis.chat_overlay:
-        events += _rolling_chat_events(list(messages or []), duration, k, chat6)
+        events += _bottom_chat_events(list(messages or []), duration, k, chat6)
+    if vis.handle:
+        events.append(f"Dialogue: 2,0:00:00.00,{full},Handle,,0,0,0,,"
+                      f"{{\\an2\\pos({RENDER_W // 2},{HANDLE_Y})\\alpha&H25&}}{_clean(vis.handle)}")
 
     with open(out_path, "w", encoding="utf-8") as fh:
         fh.write(header + "\n".join(events) + "\n")
@@ -468,24 +499,24 @@ def _captions_pass(base_video: str, audio: str, out: str,
     # (they are not installed system-wide). Use a relative path — see _fontsdir.
     fd = _fontsdir(cwd)
     parts = [f"[0:v]ass=captions.ass:fontsdir={fd}"]
-    if stream and vis.chat_overlay and has_chat:
-        px, py, pw, ph = chat_panel()
-        parts.append(f"drawbox=x={px}:y={py}:w={pw}:h={ph}:color=black@0.34:t=fill")
     if stream and vis.stream_mode:
         parts.append(f"ass=overlay.ass:fontsdir={fd}")
     if vis.progress_bar and draw_bar:
         parts.append(f"drawbox=x=0:y=ih-14:w='iw*t/{duration:.3f}':h=14:color={accent}@0.95:t=fill")
     vchain = ",".join(parts)
 
-    # A single image overlay: the facecam (brand recall) in stream mode, else the
-    # optional static watermark.
+    # A single image overlay: the centered facecam (brand recall) in stream mode,
+    # else the optional static watermark.
     facecam = config.settings.facecam_path()
     watermark = config.settings.watermark_path()
     if stream and vis.facecam and os.path.exists(facecam):
         inputs += ["-i", facecam]
+        cam_w = vis.facecam_width
+        ox = (RENDER_W - cam_w) // 2
+        oy = vis.facecam_center_y - cam_w // 2
         vchain += "[vbase];"
         vchain += (f"[2:v]{_facecam_chain(vis, facecam_round)}[cam];"
-                   f"[vbase][cam]overlay=40:40[vout]")
+                   f"[vbase][cam]overlay={ox}:{oy}[vout]")
     elif vis.watermark and os.path.exists(watermark):
         inputs += ["-i", watermark]
         vchain += "[vbase];"
@@ -550,7 +581,7 @@ def render_video(project: str, words, background, audio_path: str,
         build_ass(words, os.path.join(pdir, "captions.ass"), vis,
                   font_family_name(config.settings.font_path()))
         if vis.stream_mode:
-            build_overlay_ass(chat or [], duration, os.path.join(pdir, "overlay.ass"),
+            build_overlay_ass(words, chat or [], duration, os.path.join(pdir, "overlay.ass"),
                               font_family_name(config.settings.chat_font_path()))
 
         if on_progress:

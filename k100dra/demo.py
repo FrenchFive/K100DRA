@@ -13,15 +13,14 @@ from . import logs
 from .events import ProgressReporter, RunCancelled
 
 SAMPLE_SCRIPT = (
-    "Chat. CHAT. You are not ready for this one. So she finds a second phone taped "
-    "under his desk drawer — and it's still WARM. She doesn't say a word. She "
-    "photographs everything, puts it back exactly how it was, and waits. Someone "
-    "in chat just said 'leave him' — okay hold on, it gets worse. Three days later "
-    "he 'loses' that phone and tears the whole house apart looking for it. That's "
-    "when she slides it across the table. The color just... drains out of his face. "
-    "And chat, the phone wasn't even the worst part. The worst part was whose "
-    "number kept calling. Be honest — would you have stayed calm, or lost it right "
-    "there? ...yeah. That's the clip. That's going on the channel."
+    "Okay you HAVE to hear this one. So she finds a second phone taped under his "
+    "desk drawer, and it is still WARM. She doesn't say a word. She photographs "
+    "everything, puts it back exactly how it was, and waits. And I'm thinking okay "
+    "it cannot get worse, right? Three days later he loses that phone and tears the "
+    "whole house apart looking for it. That is when she slides it across the table. "
+    "The color just drains out of his face. And the phone wasn't even the worst "
+    "part. The worst part was whose number kept calling. Be honest, would you have "
+    "stayed calm, or lost it right there? ...yeah. I had to clip that."
 )
 
 SAMPLE_CHAT = [

@@ -40,19 +40,27 @@ def list_voices() -> list:
 
 
 def synthesize(text: str, project: str, on_progress: ProgressCb = None) -> dict:
-    """Create ``speech.mp3`` for ``project``. Returns info about the engine used."""
+    """Create ``speech.mp3`` for ``project``. Returns info about the engine used.
+
+    Performance tags ([excited], [whispers], ...) are kept only for ElevenLabs v3
+    (which performs them); for any other model or the OpenAI fallback they are
+    stripped so they are never read aloud.
+    """
+    from . import llm
     out_path = os.path.join(config.project_dir(project), "speech.mp3")
     s = config.settings
+    tags_ok = s.voice_tags and "v3" in (s.elevenlabs_model or "")
 
     if s.elevenlabs_key:
         try:
-            _elevenlabs(text, out_path, on_progress)
-            return {"engine": "elevenlabs", "voice": s.elevenlabs_voice_id, "path": out_path}
+            _elevenlabs(text if tags_ok else llm.strip_tags(text), out_path, on_progress)
+            return {"engine": s.elevenlabs_model, "voice": s.elevenlabs_voice_id,
+                    "tags": tags_ok, "path": out_path}
         except Exception as exc:
             if on_progress:
                 on_progress(0.0, f"ElevenLabs failed ({exc}); falling back to OpenAI")
 
-    _openai_tts(text, out_path, on_progress)
+    _openai_tts(llm.strip_tags(text), out_path, on_progress)
     return {"engine": "openai", "voice": s.openai_tts_voice, "path": out_path}
 
 

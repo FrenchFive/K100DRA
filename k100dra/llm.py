@@ -16,6 +16,25 @@ from .persona import persona
 
 _client = None
 
+_TAG_RE = re.compile(r"\[[^\]]*\]")
+_DASH_RE = re.compile(r"\s*[—–]\s*")
+_SP_HYPHEN_RE = re.compile(r"\s+-\s+")
+
+
+def strip_tags(text: str) -> str:
+    """Remove [performance tags] for the on-screen / subtitle version."""
+    return re.sub(r"\s{2,}", " ", _TAG_RE.sub("", text)).strip()
+
+
+def humanize(text: str) -> str:
+    """Kill AI tells: replace em/en dashes and spaced hyphens with commas."""
+    text = _DASH_RE.sub(", ", text)
+    text = _SP_HYPHEN_RE.sub(", ", text)
+    text = re.sub(r",\s*,", ", ", text)
+    text = re.sub(r"\s+([,.!?;:])", r"\1", text)
+    text = re.sub(r",\s*([.!?])", r"\1", text)
+    return re.sub(r"\s{2,}", " ", text).strip()
+
 
 def _get_client():
     global _client
@@ -80,10 +99,12 @@ def storyfy(
         )
         text = resp.choices[0].message.content
 
-    text = text.strip().strip('"')
+    # Remove dashes (AI tell), keep the performance tags for the voice engine.
+    text = humanize(text.strip().strip('"'))
+    # Save the clean (tag-free) script for the record / subtitle reference.
     path = os.path.join(config.project_dir(project), "generated.txt")
     with open(path, "w", encoding="utf-8") as fh:
-        fh.write(text)
+        fh.write(strip_tags(text))
     return text
 
 

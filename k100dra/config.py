@@ -83,37 +83,40 @@ class VisualStyle:
     caption_outline: str = "#0A0A0A"          # thick outline for readability
     caption_outline_width: int = 6
     caption_shadow: int = 3
-    caption_words_per_line: int = 4           # phrase length shown at once
+    caption_words_per_line: int = 3           # phrase length shown at once
     caption_pop: bool = True                  # scale-pop on the active word
+    caption_margin_x: int = 120               # side margins so text never spills
 
     # Look & feel ------------------------------------------------------------ #
-    accent_color: str = "#FF2E63"             # brand accent (progress bar / UI)
+    accent_color: str = "#FF2E63"             # brand accent
     color_grade: bool = True                  # contrast / saturation / vignette
     motion_zoom: bool = True                  # slow Ken-Burns zoom on background
-    progress_bar: bool = True                 # growing retention bar at bottom
-    watermark: bool = False                   # static logo (off; handle pill replaces it)
+    progress_bar: bool = False                # growing retention bar at bottom
+    watermark: bool = False                   # static logo (off; handle replaces it)
     watermark_file: str = "k100dra.png"
     watermark_opacity: float = 0.55
 
     # Stream-clip identity --------------------------------------------------- #
-    # This is what makes a K100DRA short instantly recognizable: it is framed as
-    # a CLIP from her live stream — handle badge, "LIVE" tag, and a live chat
-    # overlay reacting to the story in real time.
+    # Framed as an edited CLIP (not a livestream): a small centered avatar with a
+    # Discord-style speaking glow, the caption below it, and chat at the bottom.
     stream_mode: bool = True
-    handle: str = "@k100dra"                  # shown as an on-screen badge
-    live_badge: bool = True                   # red "LIVE" tag
-    clip_badge: bool = True                   # "CLIP" corner tag (clip-from-stream cue)
-    chat_overlay: bool = True                 # scrolling live-chat reactions
-    chat_lines_visible: int = 3               # how many chat lines on screen at once
-    chat_color: str = "#EDEDED"              # chat message text
-    # Her profile picture / facecam — shown the whole clip for brand recall.
+    handle: str = "@k100dra"                  # small attribution near the bottom
+    live_badge: bool = False                  # no "LIVE" — it's a clip, not a stream
+    clip_badge: bool = False
+    chat_overlay: bool = True                 # live-chat reactions at the bottom
+    chat_lines_visible: int = 2               # how many chat lines on screen at once
+    chat_color: str = "#FFFFFF"               # chat message text
+    # Her profile picture / facecam — a small centered bubble for brand recall.
     facecam: bool = True
     facecam_file: str = "k100dra.png"
-    facecam_width: int = 270
+    facecam_width: int = 180                  # diameter of the centered bubble
+    facecam_center_y: int = 660               # vertical centre of the avatar
     facecam_round: bool = True                # circular avatar (channel-icon look)
-    facecam_frame: bool = True                # accent ring around the facecam
-    facecam_ring: int = 10                    # ring thickness in px
-    chat_font: str = "Montserrat_BLACK.ttf"   # readable font for chat/badges
+    facecam_frame: bool = True                # thin static ring
+    facecam_ring: int = 6                     # static ring thickness
+    speaking_ring: bool = True                # Discord-style glow while she talks
+    ring_glow: int = 16                       # glow band thickness
+    chat_font: str = "Montserrat_BLACK.ttf"   # readable font for chat/handle
 
 
 @dataclass
@@ -130,7 +133,9 @@ class Settings:
     elevenlabs_key: Optional[str] = field(default_factory=lambda: _env("ELEVENLABS_API_KEY", "KEY_ELEVENLABS"))
     # Default voice is "Rachel", a clear narrator voice on every ElevenLabs account.
     elevenlabs_voice_id: str = field(default_factory=lambda: _env("ELEVENLABS_VOICE_ID", default="21m00Tcm4TlvDq8ikWAM"))
-    elevenlabs_model: str = field(default_factory=lambda: _env("ELEVENLABS_MODEL", default="eleven_multilingual_v2"))
+    # v3 understands inline performance tags ([excited], [whispers], ...).
+    elevenlabs_model: str = field(default_factory=lambda: _env("ELEVENLABS_MODEL", default="eleven_v3"))
+    voice_tags: bool = field(default_factory=lambda: _env_bool("K100DRA_VOICE_TAGS", True))
     # Lower stability + higher style = more dynamic, emphatic, "streamer"
     # delivery (lots of intonation) instead of a flat narrator read.
     voice_stability: float = field(default_factory=lambda: float(_env("ELEVENLABS_STABILITY", default="0.32")))

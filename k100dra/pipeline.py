@@ -51,11 +51,12 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
 
         def on_token(delta: str):
             buf["t"] += delta
-            reporter.state.stages["story"].artifacts["text"] = buf["t"]
+            reporter.state.stages["story"].artifacts["text"] = llm.strip_tags(buf["t"])
             frac = 0.45 + min(0.5, len(buf["t"]) / max(1, s.max_script_chars) * 0.5)
             reporter.progress("story", frac)
 
-        script = llm.storyfy(post.title, post.text, project, on_token=on_token)
+        raw_script = llm.storyfy(post.title, post.text, project, on_token=on_token)
+        script = llm.strip_tags(raw_script)        # clean: display, subtitles, metadata
         reporter.artifact("story", "text", script)
         reporter.done("story", f"{len(script)} characters")
         summary["title"] = post.title
@@ -63,7 +64,7 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
         # 2 — VOICE ---------------------------------------------------------- #
         reporter.check_stop()
         reporter.start("voice", "Recording the voiceover…")
-        info = voice.synthesize(script, project,
+        info = voice.synthesize(raw_script, project,
                                 on_progress=lambda f, m: reporter.progress("voice", f, m))
         reporter.artifact("voice", "engine", info["engine"])
         reporter.artifact("voice", "voice", info["voice"])

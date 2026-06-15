@@ -136,6 +136,11 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
         if chat:
             reporter.artifact("video", "chat", [f"{u}: {m}" for u, m in chat][:8])
             reporter.log(f"Chat overlay: {len(chat)} reactions")
+        if chat_intervals:
+            if os.path.exists(config.settings.chat_avatar_path()):
+                reporter.log(f"Chat avatar swap: {len(chat_intervals)} interjection(s)")
+            else:
+                reporter.log("No chat avatar yet — add one (Sources → Avatars) to swap the picture when chat speaks")
 
         srt_path = os.path.join(config.project_dir(project), "speech.srt")
         try:

@@ -245,6 +245,32 @@ async def get_log():
     return FileResponse(config.LATEST_LOG, media_type="text/plain")
 
 
+@app.post("/api/avatar")
+async def set_avatar(payload: dict | None = None) -> JSONResponse:
+    """Save an uploaded avatar image (base64/data-URL). which = chat | main."""
+    import base64
+    payload = payload or {}
+    which = (payload.get("which") or "chat").lower()
+    data = (payload.get("data") or "").strip()
+    if data.startswith("data:") and "," in data:
+        data = data.split(",", 1)[1]
+    try:
+        raw = base64.b64decode(data)
+    except Exception:
+        return JSONResponse({"error": "bad image data"}, status_code=400)
+    if not raw or len(raw) > 8 * 1024 * 1024:
+        return JSONResponse({"error": "image missing or too large (max 8MB)"}, status_code=400)
+    if not (raw[:8] == b"\x89PNG\r\n\x1a\n" or raw[:3] == b"\xff\xd8\xff"
+            or raw[:6] in (b"GIF87a", b"GIF89a")
+            or (raw[:4] == b"RIFF" and raw[8:12] == b"WEBP")):
+        return JSONResponse({"error": "must be PNG, JPG, GIF or WEBP"}, status_code=400)
+    path = config.settings.chat_avatar_path() if which == "chat" else config.settings.facecam_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "wb") as fh:
+        fh.write(raw)
+    return JSONResponse({"ok": True, "path": os.path.basename(path)})
+
+
 @app.websocket("/ws")
 async def ws_endpoint(websocket: WebSocket) -> None:
     await websocket.accept()

@@ -259,6 +259,23 @@ async function saveVoice(which) {
 }
 $("voice-save").onclick = () => saveVoice("main");
 $("chatvoice-save").onclick = () => saveVoice("chat");
+
+function uploadAvatar(which, inputId, btn) {
+  const f = $(inputId).files[0];
+  if (!f) { alert("Choose an image first."); return; }
+  btn.disabled = true; const label = btn.textContent; btn.textContent = "Uploading…";
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const res = await post("/api/avatar", { which, data: reader.result });
+      alert(res.ok ? "Avatar saved — it'll be used on the next render." : (res.error || "Upload failed"));
+    } catch (e) { alert("Upload failed: " + e); }
+    btn.disabled = false; btn.textContent = label;
+  };
+  reader.readAsDataURL(f);
+}
+$("chat-avatar-save").onclick = (e) => uploadAvatar("chat", "chat-avatar-file", e.target);
+$("main-avatar-save").onclick = (e) => uploadAvatar("main", "main-avatar-file", e.target);
 document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => switchView(t.dataset.view)));
 
 async function loadLinks(kind) {

@@ -13,11 +13,14 @@ from typing import List, Optional, Set
 
 from . import config
 
+# High-investment, high-drama storytelling subs. The whole point is stories
+# people get invested in — betrayal, scandal, revenge, secrets, "who's right".
+# (Low-stakes subs like funfacts/MadeMeSmile/TalesFromRetail were removed.)
 SUBREDDITS = [
-    "TrueOffMyChest", "todayilearned", "TIFU", "confessions", "FanTheories",
-    "TalesFromRetail", "decidingtobebetter", "offmychest", "confession", "FML",
-    "AmItheAsshole", "BestofRedditorUpdates", "MadeMeSmile", "funfacts",
-    "UnpopularOpinion", "tifu", "EntitledPeople", "pettyrevenge", "ProRevenge",
+    "BestofRedditorUpdates", "AmItheAsshole", "TrueOffMyChest", "confessions",
+    "TIFU", "ProRevenge", "pettyrevenge", "EntitledPeople", "offmychest",
+    "MaliciousCompliance", "relationship_advice", "ChoosingBeggars",
+    "survivinginfidelity", "JUSTNOMIL",
 ]
 
 _reddit = None

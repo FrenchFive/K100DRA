@@ -158,8 +158,8 @@ class Settings:
     # --- Story / pipeline tuning ------------------------------------------- #
     target_duration: float = field(default_factory=lambda: float(_env("K100DRA_TARGET_DURATION", default="59")))
     max_script_chars: int = field(default_factory=lambda: int(_env("K100DRA_MAX_CHARS", default="1200")))
-    min_story_rating: int = field(default_factory=lambda: int(_env("K100DRA_MIN_RATING", default="7")))
-    max_story_attempts: int = field(default_factory=lambda: int(_env("K100DRA_MAX_ATTEMPTS", default="20")))
+    min_story_rating: int = field(default_factory=lambda: int(_env("K100DRA_MIN_RATING", default="8")))
+    max_story_attempts: int = field(default_factory=lambda: int(_env("K100DRA_MAX_ATTEMPTS", default="30")))
     music_volume_db: float = field(default_factory=lambda: float(_env("K100DRA_MUSIC_DB", default="-15")))
 
     # --- Publishing --------------------------------------------------------- #

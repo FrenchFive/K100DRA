@@ -90,7 +90,7 @@ class VisualStyle:
     motion_zoom: bool = True                  # slow Ken-Burns zoom on background
     progress_bar: bool = True                 # growing retention bar at bottom
     watermark: bool = False                   # static logo (off; handle pill replaces it)
-    watermark_file: str = "K100DRA_Neutral_White.png"
+    watermark_file: str = "k100dra.png"
     watermark_opacity: float = 0.55
 
     # Stream-clip identity --------------------------------------------------- #

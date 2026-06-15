@@ -104,10 +104,25 @@ def _current(env_key: str) -> Optional[str]:
 # --------------------------------------------------------------------------- #
 # Validators (real API calls)
 # --------------------------------------------------------------------------- #
+def _safe_verify(fn, *args):
+    """Run a validator without ever aborting the wizard.
+
+    Returns (ok, msg). ``ok`` is True/False normally, or **None** if the check
+    couldn't run (interrupted or timed out) — in which case the wizard keeps the
+    saved value and moves on instead of cancelling everything.
+    """
+    try:
+        return fn(*args)
+    except KeyboardInterrupt:
+        return None, "couldn't verify just now — skipping (use --skip-verify to skip checks)"
+    except Exception as exc:
+        return False, _short(exc)
+
+
 def validate_openai(key: str) -> Tuple[bool, str]:
     try:
         import openai
-        openai.OpenAI(api_key=key).models.list()
+        openai.OpenAI(api_key=key, timeout=15).models.list()
         return True, "key is valid"
     except Exception as exc:
         return False, _short(exc)
@@ -134,8 +149,10 @@ def validate_elevenlabs(key: str) -> Tuple[bool, str]:
 def validate_reddit(cid: str, csec: str, agent: str) -> Tuple[bool, str]:
     try:
         import praw
+        # timeout so a slow/blocked network can't hang the wizard.
         reddit = praw.Reddit(client_id=cid, client_secret=csec,
-                             user_agent=agent or "K100DRA", check_for_updates=False)
+                             user_agent=agent or "K100DRA",
+                             check_for_updates=False, timeout=15)
         next(iter(reddit.subreddit("announcements").hot(limit=1)))
         return True, "credentials are valid"
     except Exception as exc:
@@ -235,7 +252,11 @@ def _configure_simple(title: str, env_key: str, validator: Callable[[str], Tuple
     if cur and not force:
         if verify:
             _info("verifying…")
-        ok, msg = validator(cur) if verify else (True, "present (not verified)")
+        ok, msg = _safe_verify(validator, cur) if verify else (True, "present (not verified)")
+        if ok is None:                       # couldn't verify — keep it, move on
+            _info(msg)
+            _ok("keeping your saved key")
+            return True
         (_ok if ok else _bad)(msg)
         if ok:
             return True
@@ -261,10 +282,10 @@ def _configure_simple(title: str, env_key: str, validator: Callable[[str], Tuple
                 continue
             _info("skipped")
             return False
-        ok, msg = validator(val) if verify else (True, "saved (not verified)")
-        if ok:
+        ok, msg = _safe_verify(validator, val) if verify else (True, "saved (not verified)")
+        if ok or ok is None:
             write_env({env_key: val})
-            _ok(msg)
+            _ok(msg if ok else "saved (couldn't verify right now)")
             return True
         _bad(msg)
         if not _confirm("Try a different key?", True):
@@ -278,7 +299,11 @@ def _configure_reddit(verify: bool, interactive: bool, force: bool) -> bool:
     if cid and csec and not force:
         if verify:
             _info("verifying…")
-        ok, msg = validate_reddit(cid, csec, agent) if verify else (True, "present (not verified)")
+        ok, msg = _safe_verify(validate_reddit, cid, csec, agent) if verify else (True, "present (not verified)")
+        if ok is None:                       # couldn't verify — keep it, move on
+            _info(msg)
+            _ok("keeping your saved Reddit credentials")
+            return True
         (_ok if ok else _bad)(msg)
         if ok:
             return True
@@ -299,11 +324,11 @@ def _configure_reddit(verify: bool, interactive: bool, force: bool) -> bool:
                 continue
             _info("skipped")
             return False
-        ok, msg = validate_reddit(cid, csec, agent) if verify else (True, "saved (not verified)")
-        if ok:
+        ok, msg = _safe_verify(validate_reddit, cid, csec, agent) if verify else (True, "saved (not verified)")
+        if ok or ok is None:
             write_env({"REDDIT_CLIENT_ID": cid, "REDDIT_CLIENT_SECRET": csec,
                        "REDDIT_USER_AGENT": agent})
-            _ok(msg)
+            _ok(msg if ok else "saved (couldn't verify right now)")
             return True
         _bad(msg)
         if not _confirm("Try again?", True):

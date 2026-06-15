@@ -9,11 +9,14 @@ totally UI-agnostic and easy to test.
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
+
+_run_log = logging.getLogger("k100dra.run")
 
 
 class Status(str, Enum):
@@ -152,6 +155,7 @@ class ProgressReporter:
             self.state.logs.append({"t": time.time(), "level": level, "msg": message})
             if len(self.state.logs) > 400:
                 self.state.logs = self.state.logs[-300:]
+        _run_log.error(message) if level == "error" else _run_log.info(message)
         self._emit("log")
 
     # stage lifecycle ------------------------------------------------------ #

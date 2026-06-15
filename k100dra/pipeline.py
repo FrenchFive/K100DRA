@@ -12,7 +12,7 @@ import os
 import time
 from typing import Optional
 
-from . import config, llm, reddit_source, selector, subtitles, video, voice, youtube
+from . import config, llm, logs, reddit_source, selector, subtitles, video, voice, youtube
 from .events import ProgressReporter, RunCancelled
 
 
@@ -31,6 +31,7 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
     config.ensure_dirs()
     project = project or reporter.state.project
     config.project_dir(project)
+    logs.init_run_log(project)
     s = config.settings
     upload = s.auto_upload if upload is None else upload
     summary: dict = {"project": project}
@@ -154,6 +155,7 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
         reporter.finish({"cancelled": True}, ok=False)
         return {"cancelled": True}
     except Exception as exc:  # surface on the active stage
+        logs.get("pipeline").exception("run failed")
         active = next((st.id for st in reporter.state.stages.values()
                        if st.status.value == "running"), "story")
         reporter.error(active, str(exc))

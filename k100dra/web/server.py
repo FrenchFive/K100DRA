@@ -232,6 +232,13 @@ def install_ytdlp() -> JSONResponse:   # sync → runs in a threadpool, won't bl
     return JSONResponse({"ok": ok, "message": msg})
 
 
+@app.get("/api/log")
+async def get_log():
+    if not os.path.exists(config.LATEST_LOG):
+        return JSONResponse({"error": "no log yet — start a run first"}, status_code=404)
+    return FileResponse(config.LATEST_LOG, media_type="text/plain")
+
+
 @app.websocket("/ws")
 async def ws_endpoint(websocket: WebSocket) -> None:
     await websocket.accept()

@@ -18,12 +18,15 @@ battle-tested fallback render still produces a watchable video.
 
 from __future__ import annotations
 
+import logging
 import os
 import struct
 import subprocess
 from typing import Callable, List, Optional
 
 from . import config
+
+_log = logging.getLogger("k100dra.video")
 
 # Captions are authored at this resolution; the final file is upscaled after.
 RENDER_W, RENDER_H = 1080, 1920
@@ -65,7 +68,10 @@ def _run(cmd: List[str], cwd: Optional[str] = None) -> None:
     proc = subprocess.run(cmd, cwd=cwd, stdout=subprocess.DEVNULL,
                           stderr=subprocess.PIPE, text=True)
     if proc.returncode != 0:
-        raise RuntimeError((proc.stderr or "ffmpeg failed").strip()[-500:])
+        err = (proc.stderr or "").strip()
+        _log.error("ffmpeg failed (rc=%s)\n  cwd: %s\n  cmd: %s\n  stderr:\n%s",
+                   proc.returncode, cwd, " ".join(cmd), err)
+        raise RuntimeError(err[-500:] or "ffmpeg failed")
 
 
 def _run_progress(cmd: List[str], total: float, cb: ProgressCb,
@@ -91,8 +97,10 @@ def _run_progress(cmd: List[str], total: float, cb: ProgressCb,
     finally:
         proc.wait()
     if proc.returncode != 0:
-        err = proc.stderr.read() if proc.stderr else ""
-        raise RuntimeError((err or "ffmpeg failed").strip()[-500:])
+        err = (proc.stderr.read() if proc.stderr else "").strip()
+        _log.error("ffmpeg failed (rc=%s)\n  cwd: %s\n  cmd: %s\n  stderr:\n%s",
+                   proc.returncode, cwd, " ".join(full), err)
+        raise RuntimeError(err[-500:] or "ffmpeg failed")
 
 
 # --------------------------------------------------------------------------- #
@@ -578,10 +586,15 @@ def render_video(project: str, words, background, audio_path: str,
         _upscale(styled, final, use_gpu, duration, on_progress, 0.78, 1.0)
         return final
     except Exception as exc:
+        _log.exception("fancy render failed; using basic fallback")
         if on_progress:
             on_progress(0.5, f"Fancy render failed ({str(exc)[:80]}); using fallback")
-        _basic_render(background.path, audio_path, srt_path, final,
-                      background.start, duration, use_gpu)
+        try:
+            _basic_render(background.path, audio_path, srt_path, final,
+                          background.start, duration, use_gpu)
+        except Exception:
+            _log.exception("basic fallback render ALSO failed")
+            raise
         if on_progress:
             on_progress(1.0, "Fallback render complete")
         return final

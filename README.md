@@ -173,6 +173,19 @@ Put music in `musics/`.
 
 ---
 
+## 🩺 Logs & troubleshooting
+
+Every run writes a full log (including complete ffmpeg output) that **resets each
+run**:
+
+* `logs/latest.log` — the most recent run
+* `projects/<project>/run.log` — kept with each project
+
+In the studio, click **"view full log ↗"** in the Activity panel. If a render
+fails, the full ffmpeg error is in there.
+
+---
+
 ## 🧪 Pipeline
 
 ```mermaid

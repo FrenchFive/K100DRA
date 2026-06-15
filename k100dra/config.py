@@ -32,6 +32,8 @@ BACKGROUNDS_FILE = os.path.join(ROOT, "backgrounds.txt")   # YouTube background 
 MUSIC_LINKS_FILE = os.path.join(ROOT, "music.txt")         # YouTube music links
 VIDEO_USAGE_FILE = os.path.join(ROOT, "video_usage.json")
 UPLOAD_TIME_FILE = os.path.join(ROOT, "upload_time.json")
+LOG_DIR = os.path.join(ROOT, "logs")
+LATEST_LOG = os.path.join(LOG_DIR, "latest.log")   # reset every run
 
 
 def _load_dotenv(override: bool = False) -> None:

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import time
 
+from . import logs
 from .events import ProgressReporter, RunCancelled
 
 SAMPLE_SCRIPT = (
@@ -37,6 +38,7 @@ def _sleep(reporter: ProgressReporter, seconds: float, steps: int = 12):
 
 
 def run(reporter: ProgressReporter) -> dict:
+    logs.init_run_log(reporter.state.project)
     try:
         # STORY — stream the script word by word.
         reporter.start("story", "Hunting for a story worth telling…")

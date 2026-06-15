@@ -215,6 +215,23 @@ async def set_voice(payload: dict | None = None) -> JSONResponse:
     return JSONResponse({"current": config.settings.elevenlabs_voice_id, "ok": True})
 
 
+@app.post("/api/install/ytdlp")
+def install_ytdlp() -> JSONResponse:   # sync → runs in a threadpool, won't block the loop
+    import importlib
+    import subprocess
+    import sys
+    try:
+        proc = subprocess.run([sys.executable, "-m", "pip", "install", "-U", "yt-dlp"],
+                              capture_output=True, text=True, timeout=240)
+    except Exception as exc:
+        return JSONResponse({"ok": False, "message": str(exc)[:300]})
+    importlib.invalidate_caches()
+    from .. import youtube_bg
+    ok = youtube_bg.available()
+    msg = "yt-dlp installed" if ok else (proc.stderr or proc.stdout or "install failed").strip()[-300:]
+    return JSONResponse({"ok": ok, "message": msg})
+
+
 @app.websocket("/ws")
 async def ws_endpoint(websocket: WebSocket) -> None:
     await websocket.accept()

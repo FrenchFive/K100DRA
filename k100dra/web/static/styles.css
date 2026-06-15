@@ -72,6 +72,7 @@ body {
 .btn:hover { transform: translateY(-1px); }
 .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.small { padding: 4px 10px; font-size: 12px; border-radius: 7px; margin-left: 4px; }
 .btn.ghost { background: transparent; }
 .btn.danger { border-color: rgba(255,84,112,0.5); color: var(--red); }
 .loop { color: var(--muted); font-size: 13px; }

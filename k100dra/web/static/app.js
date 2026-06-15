@@ -263,8 +263,10 @@ function renderLinks(kind, data) {
   $(ui.meta).textContent = `${links.length} link${links.length === 1 ? "" : "s"} · source: ${data.source}`;
   const hint = $(ui.hint);
   if (!data.ytdlp) {
-    hint.innerHTML = "⚠ yt-dlp isn't installed — run <code>pip install yt-dlp</code> to use these links.";
+    hint.innerHTML = "⚠ yt-dlp isn't installed (needed for YouTube links). " +
+      `<button class="btn small install-ytdlp">Install yt-dlp</button>`;
     hint.className = "hint warn";
+    hint.querySelector(".install-ytdlp").onclick = (e) => installYtdlp(e.target);
   } else if (data.source === "local" && links.length) {
     hint.innerHTML = `Source is <b>local</b>. Set <code>K100DRA_${ui.env}_SOURCE=auto</code> in .env to use these.`;
     hint.className = "hint warn";
@@ -290,6 +292,23 @@ async function addLinks(kind) {
 
 async function removeLink(kind, url) {
   renderLinks(kind, await post(`/api/links/${kind}`, { remove: url }));
+}
+
+async function installYtdlp(btn) {
+  btn.disabled = true;
+  btn.textContent = "Installing… (~20s)";
+  try {
+    const res = await post("/api/install/ytdlp", {});
+    if (res.ok) {
+      loadLinks("background"); loadLinks("music");
+    } else {
+      alert("Install failed:\n" + (res.message || "unknown error"));
+      btn.disabled = false; btn.textContent = "Install yt-dlp";
+    }
+  } catch (e) {
+    alert("Install failed: " + e);
+    btn.disabled = false; btn.textContent = "Install yt-dlp";
+  }
 }
 
 $("bg-add").onclick = () => addLinks("background");

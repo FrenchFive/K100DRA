@@ -197,7 +197,7 @@ def connect_youtube() -> Tuple[bool, str]:
 # Dependencies + ffmpeg
 # --------------------------------------------------------------------------- #
 def ensure_dependencies(interactive: bool) -> bool:
-    needed = ["openai", "praw", "pydub", "fastapi", "uvicorn", "dotenv", "requests"]
+    needed = ["openai", "praw", "pydub", "fastapi", "uvicorn", "dotenv", "requests", "yt_dlp"]
     missing = [m for m in needed if not _importable(m)]
     if not missing:
         _ok("Python packages installed")

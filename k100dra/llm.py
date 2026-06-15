@@ -1,8 +1,9 @@
-"""OpenAI text generation: rating, scriptwriting, metadata and subtitle cleanup.
+"""Text generation: rating, scriptwriting, chat, metadata and subtitle cleanup.
 
-All prompts come from the :mod:`persona`, so the channel's voice is defined in
-one place.  ``openai`` is imported lazily so the rest of the app (and the demo
-mode) works even when the SDK is not installed.
+Provider-agnostic: a model id starting with ``claude`` routes to Anthropic,
+anything else to OpenAI. If a configured model fails (wrong id / no access) the
+call transparently falls back to ``fallback_text_model`` so a run never dies on
+a model name. Prompts all come from the :mod:`persona`. SDKs are imported lazily.
 """
 
 from __future__ import annotations
@@ -11,10 +12,11 @@ import os
 import re
 from typing import Callable, List, Optional, Tuple
 
-from . import config
+from . import config, logs
 from .persona import persona
 
-_client = None
+_openai_client = None
+_anthropic_client = None
 
 _TAG_RE = re.compile(r"\[[^\]]*\]")
 _DASH_RE = re.compile(r"\s*[—–]\s*")
@@ -36,28 +38,91 @@ def humanize(text: str) -> str:
     return re.sub(r"\s{2,}", " ", text).strip()
 
 
-def _get_client():
-    global _client
-    if _client is None:
+# --------------------------------------------------------------------------- #
+# Provider clients
+# --------------------------------------------------------------------------- #
+def _get_openai():
+    global _openai_client
+    if _openai_client is None:
         import openai  # lazy
         if not config.settings.openai_key:
             raise RuntimeError("KEY_OPENAI is not set — cannot reach OpenAI.")
-        _client = openai.OpenAI(api_key=config.settings.openai_key)
-    return _client
+        _openai_client = openai.OpenAI(api_key=config.settings.openai_key)
+    return _openai_client
+
+
+def _get_anthropic():
+    global _anthropic_client
+    if _anthropic_client is None:
+        import anthropic  # lazy
+        if not config.settings.anthropic_key:
+            raise RuntimeError("ANTHROPIC_API_KEY is not set — cannot reach Anthropic.")
+        _anthropic_client = anthropic.Anthropic(api_key=config.settings.anthropic_key)
+    return _anthropic_client
+
+
+def _route(model: str, system: str, user: str, temperature: float,
+           max_tokens: int, on_token: Optional[Callable[[str], None]]) -> str:
+    if model.lower().startswith("claude"):
+        return _anthropic_complete(model, system, user, temperature, max_tokens, on_token)
+    return _openai_complete(model, system, user, temperature, max_tokens, on_token)
+
+
+def _complete(model: str, system: str, user: str, temperature: float = 0.7,
+              max_tokens: int = 1024, on_token: Optional[Callable[[str], None]] = None) -> str:
+    """Run a chat completion, falling back to a known-good model on failure."""
+    try:
+        return _route(model, system, user, temperature, max_tokens, on_token)
+    except Exception as exc:
+        fb = config.settings.fallback_text_model
+        if model != fb:
+            logs.get("llm").warning("model %r failed (%s); falling back to %s",
+                                    model, str(exc)[:160], fb)
+            return _route(fb, system, user, temperature, max_tokens, on_token)
+        raise
+
+
+def _openai_complete(model, system, user, temperature, max_tokens, on_token) -> str:
+    client = _get_openai()
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+    if on_token is not None:
+        text = ""
+        stream = client.chat.completions.create(
+            model=model, messages=messages, stream=True, temperature=temperature)
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content if chunk.choices else None
+            if delta:
+                text += delta
+                on_token(delta)
+        return text
+    resp = client.chat.completions.create(model=model, messages=messages, temperature=temperature)
+    return resp.choices[0].message.content or ""
+
+
+def _anthropic_complete(model, system, user, temperature, max_tokens, on_token) -> str:
+    client = _get_anthropic()
+    if on_token is not None:
+        text = ""
+        with client.messages.stream(model=model, system=system, max_tokens=max_tokens,
+                                    temperature=temperature,
+                                    messages=[{"role": "user", "content": user}]) as stream:
+            for delta in stream.text_stream:
+                text += delta
+                on_token(delta)
+        return text
+    resp = client.messages.create(model=model, system=system, max_tokens=max_tokens,
+                                  temperature=temperature,
+                                  messages=[{"role": "user", "content": user}])
+    return "".join(getattr(b, "text", "") for b in resp.content)
 
 
 # --------------------------------------------------------------------------- #
+# Tasks
+# --------------------------------------------------------------------------- #
 def rate_story(text: str) -> int:
     """Return a 0-10 viral-potential score for a raw story."""
-    client = _get_client()
-    resp = client.chat.completions.create(
-        model=config.settings.model_rate,
-        messages=[
-            {"role": "system", "content": persona.rating_system_prompt()},
-            {"role": "user", "content": text[:6000]},
-        ],
-    )
-    content = resp.choices[0].message.content.strip()
+    content = _complete(config.settings.model_rate, persona.rating_system_prompt(),
+                        text[:6000], temperature=0.0, max_tokens=8)
     for token in re.findall(r"\d+", content):
         value = int(token)
         if 0 <= value <= 10:
@@ -65,44 +130,16 @@ def rate_story(text: str) -> int:
     return 0
 
 
-def storyfy(
-    title: str,
-    body: str,
-    project: str,
-    on_token: Optional[Callable[[str], None]] = None,
-    chat=None,
-) -> str:
-    """Rewrite a story into a K100DRA narration script.
-
-    If ``on_token`` is given the response is streamed and each text delta is
-    forwarded, which lets the UI show the script being written live.
-    """
-    client = _get_client()
+def storyfy(title: str, body: str, project: str,
+            on_token: Optional[Callable[[str], None]] = None, chat=None) -> str:
+    """Rewrite a story into a K100DRA script (streamed if ``on_token`` is given)."""
     s = config.settings
-    messages = [
-        {"role": "system", "content": persona.story_system_prompt(s.target_duration, s.max_script_chars, chat_samples=chat)},
-        {"role": "user", "content": f"{title}\n\n{body}"[:8000]},
-    ]
+    system = persona.story_system_prompt(s.target_duration, s.max_script_chars, chat_samples=chat)
+    user = f"{title}\n\n{body}"[:8000]
+    text = _complete(s.model_story, system, user, temperature=0.9, max_tokens=1100, on_token=on_token)
 
-    text = ""
-    if on_token is not None:
-        stream = client.chat.completions.create(
-            model=s.model_story, messages=messages, stream=True, temperature=0.9,
-        )
-        for chunk in stream:
-            delta = chunk.choices[0].delta.content if chunk.choices else None
-            if delta:
-                text += delta
-                on_token(delta)
-    else:
-        resp = client.chat.completions.create(
-            model=s.model_story, messages=messages, temperature=0.9,
-        )
-        text = resp.choices[0].message.content
-
-    # Remove dashes (AI tell), keep the performance tags for the voice engine.
+    # Remove dashes (AI tell), keep performance tags for the voice engine.
     text = humanize(text.strip().strip('"'))
-    # Save the clean (tag-free) script for the record / subtitle reference.
     path = os.path.join(config.project_dir(project), "generated.txt")
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(strip_tags(text))
@@ -110,23 +147,12 @@ def storyfy(
 
 
 def generate_chat(script: str, count: int = 12) -> List[Tuple[str, str]]:
-    """Generate fake live-chat reactions to the story (username, message).
-
-    Powers the on-screen chat overlay. Never fatal: returns ``[]`` on any error
-    so a missing chat overlay can't break a render.
-    """
+    """Generate fake live-chat reactions. Never fatal (returns [] on error)."""
     try:
-        client = _get_client()
-        resp = client.chat.completions.create(
-            model=config.settings.model_rate,  # cheap model is plenty for chat
-            messages=[
-                {"role": "system", "content": persona.chat_system_prompt(count)},
-                {"role": "user", "content": script},
-            ],
-            temperature=1.0,
-        )
+        content = _complete(config.settings.model_rate, persona.chat_system_prompt(count),
+                            script, temperature=1.0, max_tokens=600)
         out: List[Tuple[str, str]] = []
-        for line in resp.choices[0].message.content.splitlines():
+        for line in content.splitlines():
             line = line.strip().lstrip("-•0123456789. ").strip()
             if ":" in line:
                 user, msg = line.split(":", 1)
@@ -140,15 +166,8 @@ def generate_chat(script: str, count: int = 12) -> List[Tuple[str, str]]:
 
 def metadata(script: str, subreddit: str, source_title: str, link: str) -> Tuple[str, str, List[str]]:
     """Generate title, description and tags for the upload."""
-    client = _get_client()
-    resp = client.chat.completions.create(
-        model=config.settings.model_meta,
-        messages=[
-            {"role": "system", "content": persona.metadata_system_prompt()},
-            {"role": "user", "content": script},
-        ],
-    )
-    raw = resp.choices[0].message.content.strip()
+    raw = _complete(config.settings.model_meta, persona.metadata_system_prompt(),
+                    script, temperature=0.7, max_tokens=500).strip()
     parts = [p.strip() for p in raw.split("<!>")]
     title = parts[0] if parts else ""
     # Strip a leading "Title:" label, quotes and angle brackets (YouTube rejects < >).
@@ -160,29 +179,20 @@ def metadata(script: str, subreddit: str, source_title: str, link: str) -> Tuple
     tags = [t.strip() for t in parts[2].split(",")] if len(parts) > 2 else []
     tags = [t for t in tags if t]
 
-    # Provenance + hashtags appended to the description.
     if subreddit and subreddit.lower() != "none":
         tags += ["reddit", subreddit]
     hashtags = " ".join(f"#{t.replace(' ', '').lower()}" for t in tags[:8])
-    description = (
-        f"{description}\n\n"
-        f"Story via r/{subreddit}\n{link}\n\n{hashtags}"
-    ).strip()
+    description = (f"{description}\n\nStory via r/{subreddit}\n{link}\n\n{hashtags}").strip()
     return title, description, tags
 
 
 def correct_srt(srt_text: str, script_text: str) -> str:
     """Fix spelling/missing words in an SRT against the original script."""
-    client = _get_client()
-    resp = client.chat.completions.create(
-        model=config.settings.model_srt,
-        messages=[
-            {"role": "system", "content": (
-                "Correct the SRT so its words match the reference script: fix misspellings "
-                "and obvious transcription errors only. Keep the same number of cues and the "
-                "exact same timings unless a cue is clearly empty. Output ONLY the SRT."
-            )},
-            {"role": "user", "content": f"SRT:\n{srt_text}\n\nREFERENCE SCRIPT:\n{script_text}"},
-        ],
+    system = (
+        "Correct the SRT so its words match the reference script: fix misspellings and "
+        "obvious transcription errors only. Keep the same number of cues and the exact same "
+        "timings unless a cue is clearly empty. Output ONLY the SRT."
     )
-    return resp.choices[0].message.content.strip()
+    return _complete(config.settings.model_srt, system,
+                     f"SRT:\n{srt_text}\n\nREFERENCE SCRIPT:\n{script_text}",
+                     temperature=0.0, max_tokens=4000).strip()

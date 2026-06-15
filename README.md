@@ -112,6 +112,9 @@ pip install -r requirements.txt
 ```env
 # Text (required)
 KEY_OPENAI=sk-proj-xxxx
+# Script model (default gpt-5.5; falls back to gpt-4o if unavailable).
+# Any id works — set a "claude-*" id (and ANTHROPIC_API_KEY) to use Claude.
+K100DRA_MODEL_STORY=gpt-5.5
 
 # Voice (recommended — falls back to OpenAI TTS if missing)
 ELEVENLABS_API_KEY=xxxx

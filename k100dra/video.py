@@ -266,14 +266,18 @@ Style: Base,{font_family},{fontsize},{primary},{highlight},{outline},&H64000000,
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
 
+    words = list(words)
+    n_words = len(words)
     events: List[str] = []
-    for phrase in _group(list(words), max(1, vis.caption_words_per_line)):
-        n = len(phrase)
+    g = 0  # global word index
+    for phrase in _group(words, max(1, vis.caption_words_per_line)):
         for i, word in enumerate(phrase):
             start = word.start
-            end = phrase[i + 1].start if i + 1 < n else max(word.end, word.start + 0.18)
+            # End exactly when the NEXT word (globally) begins, so two captions are
+            # never on screen at once (fixes the overlap). Last word lingers briefly.
+            end = words[g + 1].start if g + 1 < n_words else max(word.end, start + 0.3)
             if end <= start:
-                end = start + 0.12
+                end = start + 0.06
             pieces = []
             for j, w in enumerate(phrase):
                 token = _clean(w.text)
@@ -292,6 +296,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             events.append(
                 f"Dialogue: 0,{_ass_time(start)},{_ass_time(end)},Base,,0,0,0,,{text}"
             )
+            g += 1
 
     with open(out_path, "w", encoding="utf-8") as fh:
         fh.write(header + "\n".join(events) + "\n")

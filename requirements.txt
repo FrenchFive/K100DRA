@@ -4,6 +4,8 @@ uvicorn[standard]>=0.27
 
 # --- AI: script, rating, subtitles, metadata ---
 openai>=1.30
+# Optional: only needed if you set a "claude-*" text model
+anthropic>=0.40
 
 # --- Voice (ElevenLabs uses plain HTTP via requests) ---
 requests>=2.31

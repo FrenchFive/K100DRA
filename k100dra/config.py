@@ -121,13 +121,18 @@ class VisualStyle:
 
 @dataclass
 class Settings:
-    # --- OpenAI (text) ------------------------------------------------------ #
+    # --- Text models ------------------------------------------------------- #
+    # Any model id is allowed. One starting with "claude" routes to Anthropic,
+    # everything else to OpenAI. The creative writing defaults to GPT-5.5; if a
+    # model id is wrong / not accessible, the run falls back to fallback_text_model.
     openai_key: Optional[str] = field(default_factory=lambda: _env("KEY_OPENAI", "OPENAI_API_KEY"))
-    model_story: str = field(default_factory=lambda: _env("K100DRA_MODEL_STORY", default="gpt-4.1"))
+    anthropic_key: Optional[str] = field(default_factory=lambda: _env("ANTHROPIC_API_KEY", "KEY_ANTHROPIC"))
+    model_story: str = field(default_factory=lambda: _env("K100DRA_MODEL_STORY", default="gpt-5.5"))
+    model_meta: str = field(default_factory=lambda: _env("K100DRA_MODEL_META", default="gpt-5.5"))
     model_rate: str = field(default_factory=lambda: _env("K100DRA_MODEL_RATE", default="gpt-4o-mini"))
-    model_meta: str = field(default_factory=lambda: _env("K100DRA_MODEL_META", default="gpt-4o"))
     model_srt: str = field(default_factory=lambda: _env("K100DRA_MODEL_SRT", default="gpt-4o"))
     model_transcribe: str = field(default_factory=lambda: _env("K100DRA_MODEL_TRANSCRIBE", default="whisper-1"))
+    fallback_text_model: str = field(default_factory=lambda: _env("K100DRA_FALLBACK_MODEL", default="gpt-4o"))
 
     # --- ElevenLabs (voice) ------------------------------------------------- #
     elevenlabs_key: Optional[str] = field(default_factory=lambda: _env("ELEVENLABS_API_KEY", "KEY_ELEVENLABS"))
@@ -189,7 +194,7 @@ class Settings:
     def public_dict(self) -> dict:
         """A secret-free view of the settings for the UI/logs."""
         data = asdict(self)
-        for secret in ("openai_key", "elevenlabs_key", "reddit_client_id", "reddit_client_secret"):
+        for secret in ("openai_key", "anthropic_key", "elevenlabs_key", "reddit_client_id", "reddit_client_secret"):
             data[secret] = bool(data.get(secret))
         return data
 

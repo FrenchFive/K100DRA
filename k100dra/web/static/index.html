@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>K100DRA Studio</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">K100<span>DRA</span></div>
+      <div class="tag">STUDIO · <span id="tagline">loading…</span></div>
+    </div>
+    <div class="live" id="live">
+      <span class="dot" id="live-dot"></span>
+      <span id="live-state">connecting</span>
+    </div>
+  </header>
+
+  <section class="readiness" id="readiness"></section>
+
+  <section class="controls">
+    <div class="buttons">
+      <button id="btn-start" class="btn primary">▶ Start run</button>
+      <button id="btn-demo" class="btn ghost">✨ Demo</button>
+      <button id="btn-stop" class="btn danger" disabled>■ Stop</button>
+      <label class="loop">loop&nbsp;<input id="count" type="number" min="1" value="1" /></label>
+    </div>
+    <div class="overall">
+      <div class="overall-meta">
+        <span id="overall-label">Idle — press Start or Demo</span>
+        <span id="overall-eta"></span>
+      </div>
+      <div class="bar big"><div class="fill" id="overall-fill"></div>
+        <span class="pct" id="overall-pct">0%</span>
+      </div>
+    </div>
+  </section>
+
+  <main>
+    <section class="stages" id="stages"></section>
+
+    <div class="panels">
+      <section class="panel script">
+        <h3>Script <span class="meta" id="story-meta"></span></h3>
+        <div class="script-text" id="script-text">Waiting for the next story…</div>
+      </section>
+
+      <section class="panel media">
+        <div class="media-block">
+          <h3>Voice &amp; audio <span class="meta" id="voice-meta"></span></h3>
+          <audio id="audio" controls preload="none"></audio>
+          <div class="empty" id="audio-empty">No audio yet</div>
+        </div>
+        <div class="media-block">
+          <h3>Video <span class="meta" id="video-meta"></span></h3>
+          <video id="video" controls playsinline preload="none"></video>
+          <div class="empty" id="video-empty">No video yet</div>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel logs">
+      <h3>Activity</h3>
+      <div class="logs" id="logs"></div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

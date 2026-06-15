@@ -1,153 +1,165 @@
-# 🎬 K100DRA — AI-Powered Reddit Video Generator
+# 🎬 K100DRA — AI Short-Form Video *Creator*
 
-Scripting content creation using Python and AI
+Not a dumb auto-generator — a character. K100DRA turns a Reddit story into a
+fully **scripted, voiced, captioned and branded vertical video**, in the voice
+of a consistent on-channel persona, and lets you **watch every step happen live**
+in a custom studio dashboard.
 
-[YOUTUBE](https://www.youtube.com/@k100dra5/shorts) :: https://www.youtube.com/@k100dra5/shorts
-
-K100DRA is an end-to-end, automated pipeline that transforms Reddit stories into engaging YouTube-ready videos using AI. It fetches Reddit posts, rewrites them into scripts using GPT-4o, generates voiceovers, adds subtitles, syncs visuals and music, and optionally publishes the final result.
-
-Perfect for creating Shorts, TikToks, or full YouTube content—hands-free.
-
----
-
-## ⚙️ Features
-
-* 🧠 **GPT-4o Enhanced**: Story rewriting, audio synthesis, subtitle correction, and YouTube metadata generation.
-* 🔥 **Automatic Reddit Post Fetching**: Pulls and rates posts from subreddits like `TIFU`, `AITA`, `FanTheories`, etc.
-* 🗣️ **Voice Generation**: Creates high-quality narration via TTS (Text-To-Speech).
-* 🎵 **Background Audio Syncing**: Merges voiceover with music.
-* 📼 **Video Assembly**: Crops and matches background video to the audio duration.
-* 📝 **Subtitles**: Transcribes audio to `.srt`, auto-fixes sync issues.
-* 🚀 **Ready-to-Publish Output**: Upscales to 4K and can auto-upload to YouTube.
+[YOUTUBE → https://www.youtube.com/@k100dra5/shorts](https://www.youtube.com/@k100dra5/shorts)
 
 ---
 
-## 🧪 Pipeline Overview
+## ✨ What's new in v2
 
-<details>
-<summary>📊 Pipeline Flow (click to expand)</summary>
+| Area | Before | Now |
+| --- | --- | --- |
+| **Personality** | generic "influencer" prompt | a defined [persona](#-the-persona) (voice, hooks, taste) driving *every* prompt |
+| **Voice** | OpenAI `tts-1` | **ElevenLabs** narration (with automatic OpenAI fallback) |
+| **Captions** | flat one-word MoviePy text | **animated word-by-word captions** — the spoken word pops & lights up in the brand colour, thick outline + shadow |
+| **Visuals** | plain crop | colour grade, subtle motion, brand watermark, retention **progress bar** |
+| **Backgrounds** | random file + random start | **smart selection**: least-recently-used clip, fresh segment, length-matched |
+| **UI** | a `tqdm` bar | a **live web studio**: script streaming in, audio + video previews, per-stage bars, overall bar + ETA, activity log |
+| **Run it dry** | — | **demo mode** — watch the whole UI work with no API keys and no ffmpeg |
+
+---
+
+## 🖥️ The Studio
+
+```bash
+python run_studio.py            # → http://127.0.0.1:8000
+python run_studio.py --open     # and open the browser for me
+```
+
+Then press **Start** for a real run, or **✨ Demo** to watch the entire pipeline
+simulate end-to-end (no keys/ffmpeg required — great for a first look).
+
+The dashboard shows, in real time:
+
+```
+┌─ K100DRA STUDIO ─────────────────────────── ● live ─┐
+│ Script ✓   Voice ⟳   Audio ·  Subs ·  Video ·  Pub ·│
+│ Overall ▰▰▰▰▰▰▱▱▱▱ 62%   elapsed 1m02s · ~38s left   │
+│                                                      │
+│ Script:  "So she found a second phone taped under…"  │  ← streams in as it's written
+│ Voice & audio:  ▶ speech_with_music.mp3              │  ← play it back
+│ Video:  🎬 video_final.mp4                            │  ← preview the result
+│ Activity: ▸ Found r/TIFU · 9/10 · writing script…    │
+└──────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🎭 The Persona
+
+Everything the channel "is" lives in [`k100dra/persona.py`](k100dra/persona.py):
+her voice rules, example hooks, closers and taste. Those build the prompts for
+**scriptwriting, story rating and metadata**, so editing the persona restyles the
+whole channel at once.
+
+Want to tweak her without touching code? Generate an editable copy:
+
+```python
+from k100dra.persona import persona
+persona.save_template()     # writes persona.json — edit it, it's auto-loaded
+```
+
+---
+
+## ⚙️ Setup
+
+### 1. Install
+
+```bash
+pip install -r requirements.txt
+# ffmpeg + ffprobe must also be installed and on your PATH
+```
+
+### 2. Configure `.env`
+
+```env
+# Text (required)
+KEY_OPENAI=sk-proj-xxxx
+
+# Voice (recommended — falls back to OpenAI TTS if missing)
+ELEVENLABS_API_KEY=xxxx
+ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM      # default: "Rachel"
+
+# Reddit source (required for real runs)
+REDDIT_CLIENT_ID=xxxx
+REDDIT_CLIENT_SECRET=xxxx
+REDDIT_USER_AGENT=K100DRA
+
+# Optional tuning
+K100DRA_AUTO_UPLOAD=true
+K100DRA_TARGET_DURATION=59
+```
+
+YouTube upload is optional: drop your OAuth client `youtube.json` at the repo
+root (a `token.json` is created on first authorisation).
+
+### 3. Add backgrounds & music
+
+Put vertical (or large) clips in `videos/` and music in `musics/`. The selector
+takes care of variety and length-matching.
+
+---
+
+## 🧰 Usage
+
+| Command | What it does |
+| --- | --- |
+| `python run_studio.py` | Launch the live studio dashboard |
+| `python main.py` | Make one video, headless |
+| `python main.py -n 5` | Make five |
+| `python main.py --no-upload` | Render but don't upload |
+| `python main.py --demo` | Simulate a run (no keys/ffmpeg) |
+| `python main.py --cpu` | Force CPU encoding |
+| `python batch_run.py -n 10` | Normalize music, then batch-generate |
+
+---
+
+## 🧪 Pipeline
 
 ```mermaid
 graph TD;
-    A[Fetch Reddit Story] --> B[Rate with GPT-4o];
-    B --> C[Rewrite as Narration];
-    C --> D[Generate Voice Audio];
-    D --> E[Transcribe Subtitles];
-    E --> F[Select BG Music & Video];
-    F --> G[Sync Audio & Subtitles];
-    G --> H[Render Final Video];
-    H --> I[Generate Title + Tags];
-    I --> J["Upload to YouTube (optional)"];
+  A[Find + rate Reddit story] --> B[Write script · persona voice];
+  B --> C[ElevenLabs voiceover];
+  C --> D[Fit length + mix music];
+  D --> E[Whisper word-level subtitles];
+  E --> F[Pick fresh background];
+  F --> G[Render: grade · motion · animated captions · watermark · bar];
+  G --> H[Upscale 4K];
+  H --> I[Title + tags + schedule to YouTube];
 ```
 
-</details>
+---
+
+## 📂 Layout
+
+```
+K100DRA/
+├── run_studio.py            ← launch the dashboard
+├── main.py                  ← headless runner
+├── k100dra/
+│   ├── config.py            ← settings, paths, visual style, readiness
+│   ├── persona.py           ← the channel's voice (edit me!)
+│   ├── pipeline.py          ← orchestrates everything, emits progress
+│   ├── demo.py              ← simulated run for the UI
+│   ├── events.py            ← stage/progress model
+│   ├── llm.py               ← OpenAI: rate · script (streamed) · metadata · srt
+│   ├── voice.py             ← ElevenLabs voice (+ OpenAI fallback)
+│   ├── subtitles.py         ← Whisper word-level timing
+│   ├── selector.py          ← smart background + music selection
+│   ├── video.py             ← the visual engine (ASS captions, grade, render)
+│   ├── youtube.py           ← upload + scheduling
+│   └── web/                 ← FastAPI server + dashboard (HTML/CSS/JS)
+├── videos/  musics/  fonts/  imgs/
+└── requirements.txt
+```
 
 ---
 
 ## 🛠️ Requirements
 
-* Python 3.10+
-* `pydub`
-* `argparse`
-* `ffmpeg`
-* OpenAI API key (used via `k_gpt4o`)
-* Other internal modules: `k_reddit`, `k_srt`, `k_movie`, `k_youtube`
-
----
-
-## 🧰 How to Use
-
-### 🔁 Run the Full Pipeline
-
-```bash
-python MAIN.py
-```
-
-### 🧪 Use an Existing Project Again
-
-```bash
-python MAIN.py --project
-```
-
-### 🎞️ Batch Processing
-
-Run the audio normalizer and then execute `MAIN.py` repeatedly. By default, the
-script performs 10 successful runs. You can override this number with `-n`:
-
-```bash
-python batch_run.py        # runs MAIN until 10 successes
-python batch_run.py -n 3   # override to run 3 successes
-```
-
-Failed runs are retried until the requested count is reached.
-
-### ⛔ Skip Individual Steps (for testing)
-
-```bash
-python MAIN.py --bp_r       # Skip Reddit fetching
-python MAIN.py --bp_s       # Skip GPT storytelling
-python MAIN.py --bp_a       # Skip audio generation
-python MAIN.py --cpu        # Force CPU-only encoding (GPU is used by default)
-```
-
-### 🔊 Normalize Audio Volume
-
-Place your source music files in the `musics/` folder and run:
-
-```bash
-python normalize_audio.py
-```
-
-Each file will be adjusted in-place. Files already within **1 dB** of the
-target volume are skipped.
-
-### 📅 Upload Scheduling
-
-`k_youtube.py` keeps a list of upload hours (``UPLOAD_TIMES``) and by default
-posts at **10:00** and **16:00** every day.  It checks `upload_time.json` for
-the previously scheduled slot and picks the next hour from the list; when all
-times for the day are used, scheduling rolls over to the first slot of the next
-day.  The file is updated after each call so uploads remain evenly spaced.
-
----
-
-## 📂 Folder Structure
-
-```
-K100DRA/
-│
-├── MAIN.py
-├── projects/              ← Generated projects with audio, srt, video, etc.
-├── videos/                ← Background video pool
-├── musics/                ← Background music pool
-├── k_reddit.py            ← Reddit scraper
-├── k_gpt4o.py             ← GPT + TTS handler
-├── k_movie.py             ← Video editor utils
-├── k_srt.py               ← Subtitle processor
-├── k_youtube.py           ← Upload script
-├── normalize_audio.py     ← Equalizes volume of files in `musics/`
-├── links.txt              ← Prevent reposting same stories
-└── bad_links.txt          ← Keep track of poorly rated posts
-```
-
----
-
-## 🧠 Subreddits Supported
-
-Pulls posts from a rotating pool of quality storytelling subs:
-
-```
-TrueOffMyChest, todayilearned, TIFU, confessions, FanTheories,
-TalesFromRetail, decidingtobebetter, FML, AITA, BestofRedditorUpdates,
-MadeMeSmile, funfacts, UnpopularOpinion, and more...
-```
-
----
-
-## DOT ENV 
-```env
-KEY_OPENAI = sk-proj-xxxx
-REDDIT_CLIENT_ID = xxxx
-REDDIT_CLIENT_SECRET = xxxx
-REDDIT_USER_AGENT = K100DRA
-```
+Python 3.10+, `ffmpeg`/`ffprobe`, and the packages in `requirements.txt`
+(FastAPI, OpenAI, praw, pydub, requests, Google API client).

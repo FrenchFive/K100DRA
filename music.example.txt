@@ -1,0 +1,19 @@
+# K100DRA music links
+# ---------------------------------------------------------------------------
+# Use YouTube tracks as background music instead of storing audio files.
+# For each render K100DRA downloads ONLY the segment it needs (via yt-dlp) and
+# deletes it afterwards, so nothing piles up on your drive.
+#
+# Easiest way: add these from the studio dashboard → "Sources" tab → Music.
+# Or: copy this file to "music.txt" and paste one YouTube link per line below.
+#
+# Use copyright-safe, low-key, loopable tracks (lo-fi / ambient / no-copyright
+# background music). Lines starting with '#' and blank lines are ignored.
+#
+# .env options:
+#   K100DRA_MUSIC_SOURCE=auto      # links if music.txt has any, else musics/ (default)
+#   K100DRA_MUSIC_SOURCE=youtube   # always use these links
+#   K100DRA_MUSIC_SOURCE=local     # always use the musics/ folder
+
+# https://www.youtube.com/watch?v=xxxxxxxxxxx
+# https://youtu.be/yyyyyyyyyyy

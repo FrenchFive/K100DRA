@@ -1,3 +1,15 @@
+#!/usr/bin/env python3
+"""Normalize the music pool, then generate a batch of videos.
+
+Kept for backwards compatibility — it simply normalizes ``musics/`` and then
+calls the new ``main.py`` runner, which already retries failed runs internally.
+
+    python batch_run.py          # normalize, then make 10 videos
+    python batch_run.py -n 3     # ...make 3
+"""
+
+from __future__ import annotations
+
 import argparse
 import os
 import subprocess
@@ -6,49 +18,18 @@ import sys
 import normalize_audio
 
 
-def run_main(extra_args=None):
-    """Run main.py as a subprocess and return True if successful."""
-    script_path = os.path.join(os.path.dirname(__file__), 'main.py')
-    cmd = [sys.executable, script_path]
-    if extra_args:
-        cmd.extend(extra_args)
-    try:
-        subprocess.run(cmd, check=True)
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"MAIN failed with exit code {e.returncode}")
-        return False
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description='Normalize audio then run main.py multiple times.'
-    )
-    parser.add_argument(
-        '-n', '--number', type=int, default=10,
-        help='Number of successful MAIN runs to execute (default: 10)'
-    )
-    parser.add_argument(
-        'main_args', nargs=argparse.REMAINDER,
-        help='Arguments to pass to main.py (use -- before these arguments)'
-    )
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Normalize audio then generate a batch.")
+    parser.add_argument("-n", "--number", type=int, default=10, help="Number of videos (default: 10).")
+    parser.add_argument("main_args", nargs=argparse.REMAINDER, help="Extra args passed to main.py.")
     args = parser.parse_args()
 
-    # Step 1: normalize audio
     normalize_audio.normalize_folder()
 
-    success = 0
-    attempts = 0
-    while success < args.number:
-        attempts += 1
-        print(f"-- RUNNING MAIN ({attempts}) --")
-        if run_main(args.main_args):
-            success += 1
-        else:
-            print('MAIN errored, retrying...')
-
-    print(f"Completed {success} successful runs after {attempts} attempts.")
+    cmd = [sys.executable, os.path.join(os.path.dirname(__file__), "main.py"), "-n", str(args.number)]
+    cmd += [a for a in args.main_args if a != "--"]
+    subprocess.run(cmd, check=False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

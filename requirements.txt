@@ -1,0 +1,26 @@
+# --- Studio web dashboard ---
+fastapi>=0.110
+uvicorn[standard]>=0.27
+
+# --- AI: script, rating, subtitles, metadata ---
+openai>=1.30
+# Optional: only needed if you set a "claude-*" text model
+anthropic>=0.40
+
+# --- Voice (ElevenLabs uses plain HTTP via requests) ---
+requests>=2.31
+
+# --- Sources & media ---
+praw>=7.7
+pydub>=0.25
+python-dotenv>=1.0
+
+# --- YouTube background links (no local clutter); optional ---
+yt-dlp>=2024.1
+
+# --- YouTube upload (optional at runtime) ---
+google-api-python-client>=2.100
+google-auth-oauthlib>=1.2
+google-auth-httplib2>=0.2
+
+# NOTE: ffmpeg + ffprobe must be installed separately and on your PATH.

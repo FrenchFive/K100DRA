@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>K100DRA Studio</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">K100<span>DRA</span></div>
+      <div class="tag">STUDIO · <span id="tagline">loading…</span></div>
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-view="studio">Studio</button>
+      <button class="tab" data-view="sources">Sources</button>
+    </nav>
+    <div class="live" id="live">
+      <span class="dot" id="live-dot"></span>
+      <span id="live-state">connecting</span>
+    </div>
+  </header>
+
+  <!-- ===================== STUDIO ===================== -->
+  <section id="view-studio" class="view active">
+    <section class="readiness" id="readiness"></section>
+
+    <section class="controls">
+      <div class="buttons">
+        <button id="btn-start" class="btn primary">▶ Start run</button>
+        <button id="btn-demo" class="btn ghost">✨ Demo</button>
+        <button id="btn-stop" class="btn danger" disabled>■ Stop</button>
+        <label class="loop">content&nbsp;<select id="mode">
+          <option value="auto">Auto (mix)</option>
+          <option value="drama">Drama</option>
+          <option value="news">News</option>
+        </select></label>
+        <label class="loop">loop&nbsp;<input id="count" type="number" min="1" value="1" /></label>
+      </div>
+      <div class="overall">
+        <div class="overall-meta">
+          <span id="overall-label">Idle — press Start or Demo</span>
+          <span id="overall-eta"></span>
+        </div>
+        <div class="bar big"><div class="fill" id="overall-fill"></div>
+          <span class="pct" id="overall-pct">0%</span>
+        </div>
+      </div>
+    </section>
+
+    <main>
+      <section class="stages" id="stages"></section>
+
+      <div class="panels">
+        <section class="panel script">
+          <h3>Script <span class="meta" id="story-meta"></span></h3>
+          <div class="script-text" id="script-text">Waiting for the next story…</div>
+        </section>
+
+        <section class="panel media">
+          <div class="media-block">
+            <h3>Voice &amp; audio <span class="meta" id="voice-meta"></span></h3>
+            <audio id="audio" controls preload="none"></audio>
+            <div class="empty" id="audio-empty">No audio yet</div>
+          </div>
+          <div class="media-block">
+            <h3>Video <span class="meta" id="video-meta"></span></h3>
+            <video id="video" controls playsinline preload="none"></video>
+            <div class="empty" id="video-empty">No video yet</div>
+          </div>
+          <div class="media-block">
+            <h3>Live chat <span class="meta" id="chat-meta"></span></h3>
+            <div class="chat-preview" id="chat-preview"><div class="empty">No chat yet</div></div>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel logs">
+        <h3>Activity <a class="log-link" href="/api/log" target="_blank" rel="noopener">view full log ↗</a></h3>
+        <div class="logs" id="logs"></div>
+      </section>
+    </main>
+  </section>
+
+  <!-- ===================== SOURCES ===================== -->
+  <section id="view-sources" class="view">
+    <p class="sources-intro">
+      Add YouTube links to use as backgrounds and music. K100DRA downloads only
+      the segment it needs for each video and deletes it after — nothing piles up
+      on your drive. More links = more variety.
+    </p>
+    <section class="panel voice-panel">
+      <h3>🎙️ Voice (ElevenLabs) <span class="meta" id="voice-cur"></span></h3>
+      <p class="hint" id="voice-hint"></p>
+      <label class="vlabel">Her voice (K100DRA)</label>
+      <div class="link-add">
+        <select id="voice-select"><option value="">— your ElevenLabs voices —</option></select>
+        <input id="voice-id" placeholder="…or paste a Voice ID" />
+        <button class="btn primary" id="voice-save">Save</button>
+      </div>
+      <label class="vlabel">Chat voice (the 2nd speaker, robotic)</label>
+      <div class="link-add">
+        <select id="chatvoice-select"><option value="">— your ElevenLabs voices —</option></select>
+        <input id="chatvoice-id" placeholder="…or paste a Voice ID" />
+        <button class="btn primary" id="chatvoice-save">Save</button>
+      </div>
+    </section>
+
+    <section class="panel voice-panel">
+      <h3>🖼️ Avatars</h3>
+      <p class="hint">Shown as a centered circle. The <b>chat avatar</b> (e.g. the cat) swaps in while a chat interjection is speaking.</p>
+      <div class="link-add">
+        <label class="vlabel" style="flex:1">Chat avatar
+          <input type="file" id="chat-avatar-file" accept="image/png,image/jpeg,image/gif,image/webp" />
+        </label>
+        <button class="btn primary" id="chat-avatar-save">Upload</button>
+      </div>
+      <div class="link-add">
+        <label class="vlabel" style="flex:1">Her avatar (K100DRA)
+          <input type="file" id="main-avatar-file" accept="image/png,image/jpeg,image/gif,image/webp" />
+        </label>
+        <button class="btn primary" id="main-avatar-save">Upload</button>
+      </div>
+    </section>
+
+    <div class="sources">
+      <section class="panel">
+        <h3>🎬 Background videos <span class="meta" id="bg-meta"></span></h3>
+        <p class="hint" id="bg-hint"></p>
+        <div class="link-add">
+          <textarea id="bg-input" rows="3" placeholder="Paste one or many YouTube links, one per line…"></textarea>
+          <button class="btn primary" id="bg-add">Add links</button>
+        </div>
+        <ul class="link-list" id="bg-list"></ul>
+      </section>
+
+      <section class="panel">
+        <h3>🎵 Music <span class="meta" id="mus-meta"></span></h3>
+        <p class="hint" id="mus-hint"></p>
+        <div class="link-add">
+          <textarea id="mus-input" rows="3" placeholder="Paste one or many YouTube links, one per line…"></textarea>
+          <button class="btn primary" id="mus-add">Add links</button>
+        </div>
+        <ul class="link-list" id="mus-list"></ul>
+      </section>
+    </div>
+  </section>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

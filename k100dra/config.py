@@ -106,9 +106,11 @@ class VisualStyle:
     chat_color: str = "#EDEDED"              # chat message text
     # Her profile picture / facecam — shown the whole clip for brand recall.
     facecam: bool = True
-    facecam_file: str = "K100DRA_Speaking.png"
+    facecam_file: str = "k100dra.png"
     facecam_width: int = 270
+    facecam_round: bool = True                # circular avatar (channel-icon look)
     facecam_frame: bool = True                # accent ring around the facecam
+    facecam_ring: int = 10                    # ring thickness in px
     chat_font: str = "Montserrat_BLACK.ttf"   # readable font for chat/badges
 
 

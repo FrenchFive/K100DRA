@@ -109,6 +109,42 @@ def hex_to_ffmpeg(value: str) -> str:
     return "0x" + value.lstrip("#").upper()
 
 
+def hex_rgb(value: str) -> tuple:
+    v = value.lstrip("#")
+    return int(v[0:2], 16), int(v[2:4], 16), int(v[4:6], 16)
+
+
+def _facecam_chain(vis: "config.VisualStyle", round_override=None) -> str:
+    """Filter body (between ``[2:v]`` and ``[cam]``) that frames the avatar.
+
+    When round, it crops to a circle and paints an accent ring in a single
+    per-pixel ``geq`` pass — the channel-icon look. ``round_override`` lets the
+    renderer degrade to the simpler square frame if the circular pass fails.
+    """
+    w = vis.facecam_width
+    is_round = vis.facecam_round if round_override is None else round_override
+    if not is_round:
+        frame = (f",pad=iw+16:ih+16:8:8:{hex_to_ffmpeg(vis.accent_color)}@1.0"
+                 if vis.facecam_frame else "")
+        return f"scale={w}:-1{frame},format=rgba"
+
+    cx = w / 2.0
+    rout2 = cx * cx
+    ring = vis.facecam_ring if vis.facecam_frame else 0
+    rin = max(0.0, cx - ring)
+    rin2 = rin * rin
+    ar, ag, ab = hex_rgb(vis.accent_color)
+    d2 = f"((X-{cx:.1f})*(X-{cx:.1f})+(Y-{cx:.1f})*(Y-{cx:.1f}))"
+    geq = ("geq="
+           f"r='if(gt({d2},{rin2:.1f}),{ar},r(X,Y))':"
+           f"g='if(gt({d2},{rin2:.1f}),{ag},g(X,Y))':"
+           f"b='if(gt({d2},{rin2:.1f}),{ab},b(X,Y))':"
+           f"a='if(gt({d2},{rout2:.1f}),0,255)'")
+    # Cover-crop to a centred square, then circular-mask with the ring.
+    return (f"scale={w}:{w}:force_original_aspect_ratio=increase,crop={w}:{w},"
+            f"format=rgba,{geq}")
+
+
 def font_family_name(path: str) -> str:
     """Read the family name from an sfnt (ttf/otf) font's ``name`` table.
 
@@ -390,7 +426,7 @@ def _captions_pass(base_video: str, audio: str, out: str,
                    vis: "config.VisualStyle", duration: float, use_gpu: bool,
                    cb: ProgressCb, lo: float, hi: float, cwd: str,
                    draw_bar: bool = True, stream: bool = True,
-                   has_chat: bool = False) -> None:
+                   has_chat: bool = False, facecam_round=None) -> None:
     """Compose captions + stream overlay + facecam + bar, then mux audio."""
     inputs = ["-i", base_video, "-i", audio]
     accent = hex_to_ffmpeg(vis.accent_color)
@@ -413,9 +449,8 @@ def _captions_pass(base_video: str, audio: str, out: str,
     watermark = config.settings.watermark_path()
     if stream and vis.facecam and os.path.exists(facecam):
         inputs += ["-i", facecam]
-        frame = (f",pad=iw+16:ih+16:8:8:{accent}@1.0" if vis.facecam_frame else "")
         vchain += "[vbase];"
-        vchain += (f"[2:v]scale={vis.facecam_width}:-1{frame},format=rgba[cam];"
+        vchain += (f"[2:v]{_facecam_chain(vis, facecam_round)}[cam];"
                    f"[vbase][cam]overlay=40:40[vout]")
     elif vis.watermark and os.path.exists(watermark):
         inputs += ["-i", watermark]
@@ -492,9 +527,10 @@ def render_video(project: str, words, background, audio_path: str,
         if on_progress:
             on_progress(0.30, "Burning captions + stream overlay")
         attempts = [
-            dict(draw_bar=True, stream=True),
-            dict(draw_bar=False, stream=True),
-            dict(draw_bar=False, stream=False),
+            dict(draw_bar=True, stream=True),                          # full look
+            dict(draw_bar=False, stream=True),                         # drop bar
+            dict(draw_bar=False, stream=True, facecam_round=False),    # square facecam
+            dict(draw_bar=False, stream=False),                        # captions only
         ]
         last_exc = None
         for i, opts in enumerate(attempts):

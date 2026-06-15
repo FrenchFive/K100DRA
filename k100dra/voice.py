@@ -40,36 +40,80 @@ def list_voices() -> list:
 
 
 def synthesize(text: str, project: str, on_progress: ProgressCb = None) -> dict:
-    """Create ``speech.mp3`` for ``project``. Returns info about the engine used.
+    """Create ``speech.mp3``. Uses a second voice for {chat: ...} interjections
+    when ``chat_voice`` is on, falling back to a single voice on any issue.
 
     Performance tags ([excited], [whispers], ...) are kept only for ElevenLabs v3
-    (which performs them); for any other model or the OpenAI fallback they are
-    stripped so they are never read aloud.
+    (which performs them); otherwise they are stripped so they're never read.
     """
     from . import llm
     out_path = os.path.join(config.project_dir(project), "speech.mp3")
     s = config.settings
     tags_ok = s.voice_tags and "v3" in (s.elevenlabs_model or "")
 
-    if s.elevenlabs_key:
+    segments = llm.voice_segments(text) if s.chat_voice else [("k", text)]
+    multi = s.chat_voice and len(segments) > 1 and any(sp == "chat" for sp, _ in segments)
+
+    if multi:
         try:
-            _elevenlabs(text if tags_ok else llm.strip_tags(text), out_path, on_progress)
-            return {"engine": s.elevenlabs_model, "voice": s.elevenlabs_voice_id,
-                    "tags": tags_ok, "path": out_path}
+            engine = _synth_segments(segments, out_path, tags_ok, on_progress)
+            return {"engine": engine, "voice": s.elevenlabs_voice_id, "tags": tags_ok,
+                    "two_voice": True, "path": out_path}
         except Exception as exc:
             if on_progress:
-                on_progress(0.0, f"ElevenLabs failed ({exc}); falling back to OpenAI")
+                on_progress(0.0, f"two-voice failed ({exc}); using single voice")
 
-    _openai_tts(llm.strip_tags(text), out_path, on_progress)
-    return {"engine": "openai", "voice": s.openai_tts_voice, "path": out_path}
+    engine = _synth_one(llm.flatten_markers(text), out_path, "k", tags_ok, on_progress)
+    return {"engine": engine, "voice": s.elevenlabs_voice_id, "tags": tags_ok, "path": out_path}
+
+
+def _synth_one(text: str, out_path: str, speaker: str, tags_ok: bool,
+               on_progress: ProgressCb) -> str:
+    """Synthesize one chunk with the voice for ``speaker`` ('k' or 'chat')."""
+    from . import llm
+    s = config.settings
+    if s.elevenlabs_key:
+        try:
+            vid = s.elevenlabs_chat_voice_id if speaker == "chat" else s.elevenlabs_voice_id
+            _elevenlabs(text if tags_ok else llm.strip_tags(text), out_path, on_progress, vid)
+            return "elevenlabs"
+        except Exception as exc:
+            if on_progress:
+                on_progress(0.0, f"ElevenLabs failed ({exc}); OpenAI fallback")
+    voice = s.openai_chat_tts_voice if speaker == "chat" else s.openai_tts_voice
+    _openai_tts(llm.strip_tags(text), out_path, on_progress, voice)
+    return "openai"
+
+
+def _synth_segments(segments, out_path: str, tags_ok: bool, on_progress: ProgressCb) -> str:
+    """Synthesize each segment with its speaker's voice and stitch them together."""
+    from pydub import AudioSegment
+    combined = AudioSegment.silent(duration=0)
+    engine = "elevenlabs"
+    n = len(segments)
+    for i, (sp, seg_text) in enumerate(segments):
+        seg_file = f"{out_path}.seg{i}.mp3"
+        engine = _synth_one(seg_text, seg_file, sp, tags_ok, None)
+        clip = AudioSegment.from_file(seg_file)
+        gap = 160 if sp == "chat" else 70   # a beat around the interjection
+        combined += clip + AudioSegment.silent(duration=gap)
+        try:
+            os.remove(seg_file)
+        except Exception:
+            pass
+        if on_progress:
+            on_progress((i + 1) / n, f"Recording voices… ({i + 1}/{n})")
+    combined.export(out_path, format="mp3")
+    return f"{engine}+chat"
 
 
 # --------------------------------------------------------------------------- #
-def _elevenlabs(text: str, out_path: str, on_progress: ProgressCb) -> None:
+def _elevenlabs(text: str, out_path: str, on_progress: ProgressCb, voice_id: str = None) -> None:
     import requests  # always available
 
     s = config.settings
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{s.elevenlabs_voice_id}/stream"
+    vid = voice_id or s.elevenlabs_voice_id
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{vid}/stream"
     headers = {
         "xi-api-key": s.elevenlabs_key,
         "Content-Type": "application/json",
@@ -112,7 +156,7 @@ def _elevenlabs(text: str, out_path: str, on_progress: ProgressCb) -> None:
         on_progress(1.0, "Voice ready")
 
 
-def _openai_tts(text: str, out_path: str, on_progress: ProgressCb) -> None:
+def _openai_tts(text: str, out_path: str, on_progress: ProgressCb, voice: str = None) -> None:
     import openai  # lazy
 
     s = config.settings
@@ -122,7 +166,7 @@ def _openai_tts(text: str, out_path: str, on_progress: ProgressCb) -> None:
         on_progress(0.2, "Generating voice with OpenAI TTS…")
     client = openai.OpenAI(api_key=s.openai_key)
     with client.audio.speech.with_streaming_response.create(
-        model="tts-1-hd", voice=s.openai_tts_voice, input=text,
+        model="tts-1-hd", voice=voice or s.openai_tts_voice, input=text,
     ) as response:
         response.stream_to_file(out_path)
     if on_progress:

@@ -56,6 +56,8 @@ class Persona:
         "Talk like a real conversation, with slang and filler: 'okay so', 'wait', 'nah', 'bro', 'y'all', 'lowkey', 'deadass', 'no because', 'the way that', 'I'm sorry but'. Be a little messy, NOT polished.",
         "Lead with the HOOK, not setup. First line must make them NEED to know what happens. Then keep teasing what's coming ('wait till you hear', 'it gets worse').",
         "Never moralize, resolve, or give the verdict early. WITHHOLD the biggest twist and keep teasing it so they have to stay to the end.",
+        "Have a STRONG, SPECIFIC take. Pick a side, make a bold claim, say the thing only YOU would say. 'this is dystopian' or 'imagine if' is a boring non-take. Commit to a spicy opinion people will fight about.",
+        "Be TIGHT. Say the wild thing ONCE, hard, then escalate with NEW info or a sharper angle. NEVER restate the same point three different ways. Cut all padding. Shorter and punchier ALWAYS wins, do not stretch to fill time.",
         "React to your chat's TAKES, never by username. 'okay some of you are saying he's right and chat? that's CRAZY', 'y'all are wild', 'someone just said... no. NO.'. Call out the crazy or controversial takes and clap back or agree.",
         "NEVER say 'username said' or read a handle out loud. No streamer reads chat like that. React to the OPINION, not the name.",
         "NEVER use em dashes, en dashes, or hyphens as pauses. Commas, periods, or new sentences only.",
@@ -104,9 +106,18 @@ class Persona:
         return "\n".join(f"- {rule}" for rule in self.voice_rules)
 
     def story_system_prompt(self, target_seconds: float, max_chars: int,
-                            chat_samples=None, kind: str = "story") -> str:
+                            chat_samples=None, kind: str = "story",
+                            voiced_chat: bool = False) -> str:
         words = int(target_seconds * 2.6)
         tags = ", ".join(self.voice_tags)
+        voice_block = ""
+        if voiced_chat:
+            voice_block = (
+                "\nSECOND SPEAKER: 1 to 3 times, a chat member CUTS YOU OFF and you react to "
+                "them. Write their interjection EXACTLY like this, on its own: "
+                "{chat: short punchy line} (under 8 words, no performance tags inside). Right "
+                "after, react to what they said. Use it to land a hot take or escalate, never "
+                "as filler.\n")
         if kind == "news":
             premise = (
                 "This is a clip from your stream where you react to a REAL news story that is "
@@ -141,6 +152,7 @@ class Persona:
             "Non-negotiable voice rules:\n"
             f"{self._rules_block()}\n"
             f"{news_block}"
+            f"{voice_block}"
             f"{chat_block}\n"
             "Performance tags you may use (sparingly, right before the words they affect):\n"
             f"{tags}\n\n"

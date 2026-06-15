@@ -149,6 +149,11 @@ class Settings:
     voice_speaker_boost: bool = field(default_factory=lambda: _env_bool("ELEVENLABS_SPEAKER_BOOST", True))
     # OpenAI voice used only as a fallback when ElevenLabs is unavailable.
     openai_tts_voice: str = field(default_factory=lambda: _env("OPENAI_TTS_VOICE", default="nova"))
+    # Second speaker: a chat member's voice that interrupts her now and then
+    # (the script marks these as {chat: ...}). Makes it feel like a real clip.
+    chat_voice: bool = field(default_factory=lambda: _env_bool("K100DRA_CHAT_VOICE", True))
+    elevenlabs_chat_voice_id: str = field(default_factory=lambda: _env("ELEVENLABS_CHAT_VOICE_ID", default="ErXwobaYiN019PkySvjV"))  # "Antoni"
+    openai_chat_tts_voice: str = field(default_factory=lambda: _env("OPENAI_CHAT_TTS_VOICE", default="onyx"))
 
     # --- Reddit ------------------------------------------------------------- #
     reddit_client_id: Optional[str] = field(default_factory=lambda: _env("REDDIT_CLIENT_ID"))

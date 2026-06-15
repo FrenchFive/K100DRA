@@ -38,6 +38,38 @@ def humanize(text: str) -> str:
     return re.sub(r"\s{2,}", " ", text).strip()
 
 
+# Second-speaker interjections the writer marks as {chat: ...}.
+_CHAT_RE = re.compile(r"\{chat:\s*(.*?)\}", re.I | re.S)
+
+
+def flatten_markers(text: str) -> str:
+    """Remove {chat: ...} braces but keep the spoken words (single-voice TTS)."""
+    return _CHAT_RE.sub(lambda m: m.group(1).strip(), text)
+
+
+def clean_for_display(text: str) -> str:
+    """Tag-free, marker-free text for captions / subtitles / the UI."""
+    return strip_tags(flatten_markers(text))
+
+
+def voice_segments(text: str):
+    """Split a script into (speaker, text) segments: 'k' = K100DRA, 'chat' = a
+    chat member's voiced interjection."""
+    segments, last = [], 0
+    for m in _CHAT_RE.finditer(text):
+        pre = text[last:m.start()].strip()
+        if pre:
+            segments.append(("k", pre))
+        msg = strip_tags(m.group(1)).strip()
+        if msg:
+            segments.append(("chat", msg))
+        last = m.end()
+    tail = text[last:].strip()
+    if tail:
+        segments.append(("k", tail))
+    return segments or [("k", text.strip())]
+
+
 # --------------------------------------------------------------------------- #
 # Provider clients
 # --------------------------------------------------------------------------- #
@@ -136,18 +168,19 @@ def storyfy(title: str, body: str, project: str,
     """Rewrite a story/news item into a K100DRA script (streamed if ``on_token``)."""
     s = config.settings
     system = persona.story_system_prompt(s.target_duration, s.max_script_chars,
-                                         chat_samples=chat, kind=kind)
+                                         chat_samples=chat, kind=kind,
+                                         voiced_chat=s.chat_voice)
     if kind == "news":
         user = f"HEADLINE: {title}\n\nWHAT PEOPLE ARE SAYING:\n{body}"[:8000]
     else:
         user = f"{title}\n\n{body}"[:8000]
     text = _complete(s.model_story, system, user, temperature=0.9, max_tokens=1100, on_token=on_token)
 
-    # Remove dashes (AI tell), keep performance tags for the voice engine.
+    # Remove dashes (AI tell), keep performance tags + {chat:} markers for voice.
     text = humanize(text.strip().strip('"'))
     path = os.path.join(config.project_dir(project), "generated.txt")
     with open(path, "w", encoding="utf-8") as fh:
-        fh.write(strip_tags(text))
+        fh.write(clean_for_display(text))
     return text
 
 

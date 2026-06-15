@@ -119,6 +119,9 @@ K100DRA_MODEL_STORY=gpt-5.5
 # Voice (recommended — falls back to OpenAI TTS if missing)
 ELEVENLABS_API_KEY=xxxx
 ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM      # default: "Rachel"
+# A 2nd voice for chat interjections that interrupt her ({chat: ...}).
+K100DRA_CHAT_VOICE=true
+ELEVENLABS_CHAT_VOICE_ID=ErXwobaYiN019PkySvjV  # default: "Antoni"
 # Tip: pick the voice visually in the studio → Sources tab (or the setup
 # wizard) — it lists the voices on your ElevenLabs account and sets this for you.
 

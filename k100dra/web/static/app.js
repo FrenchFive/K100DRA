@@ -119,6 +119,22 @@ function render(state) {
     if (url !== lastVideo) { $("video").src = url; lastVideo = url; }
   });
 
+  // live chat preview
+  const chat = (video.artifacts && video.artifacts.chat) || [];
+  const chatEl = $("chat-preview");
+  if (chat.length) {
+    $("chat-meta").textContent = `${chat.length} reactions`;
+    chatEl.innerHTML = chat.map((line) => {
+      const idx = line.indexOf(":");
+      const user = idx > 0 ? line.slice(0, idx) : "chat";
+      const msg = idx > 0 ? line.slice(idx + 1) : line;
+      return `<div class="cl"><span class="u">${escapeHtml(user)}</span>${escapeHtml(msg)}</div>`;
+    }).join("");
+  } else {
+    $("chat-meta").textContent = "";
+    chatEl.innerHTML = `<div class="empty">No chat yet</div>`;
+  }
+
   // logs
   const logs = state.logs || [];
   $("logs").innerHTML = logs.slice(-120).map((l) => {

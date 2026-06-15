@@ -12,14 +12,22 @@ import time
 from .events import ProgressReporter, RunCancelled
 
 SAMPLE_SCRIPT = (
-    "So she found a second phone taped under his desk drawer — and it was still "
-    "warm. She didn't say a word. She just photographed everything, put it back "
-    "exactly how it was, and waited. Three days later he 'lost' that phone and "
-    "turned the house upside down looking for it. That's when she slid it across "
-    "the table. The color drained out of his face. Turns out the phone wasn't "
-    "even the worst part — the worst part was whose number kept calling. "
-    "Be honest: would you have stayed calm, or lost it right there?"
+    "Chat. CHAT. You are not ready for this one. So she finds a second phone taped "
+    "under his desk drawer — and it's still WARM. She doesn't say a word. She "
+    "photographs everything, puts it back exactly how it was, and waits. Someone "
+    "in chat just said 'leave him' — okay hold on, it gets worse. Three days later "
+    "he 'loses' that phone and tears the whole house apart looking for it. That's "
+    "when she slides it across the table. The color just... drains out of his face. "
+    "And chat, the phone wasn't even the worst part. The worst part was whose "
+    "number kept calling. Be honest — would you have stayed calm, or lost it right "
+    "there? ...yeah. That's the clip. That's going on the channel."
 )
+
+SAMPLE_CHAT = [
+    "mossy_frog: NO WAY", "xX_dadbod_Xx: not the second phone 💀", "certified_yapper: LEAVE HIM",
+    "pixel_gremlin: chat is this real", "soup_enjoyer: called it", "vibe_auditor: still WARM?? bro",
+    "404_namegone: F", "lurkzilla: I'm screaming",
+]
 
 
 def _sleep(reporter: ProgressReporter, seconds: float, steps: int = 12):
@@ -80,8 +88,10 @@ def run(reporter: ProgressReporter) -> dict:
         # VIDEO
         reporter.start("video", "Choosing a fresh background…")
         reporter.artifact("video", "background", "city_night_loop.mp4")
+        reporter.artifact("video", "chat", SAMPLE_CHAT)
+        reporter.log(f"Chat overlay: {len(SAMPLE_CHAT)} reactions")
         for label, lo, hi in [("Styling background", 0.02, 0.30),
-                              ("Burning animated captions", 0.30, 0.78),
+                              ("Burning captions + stream overlay", 0.30, 0.78),
                               ("Upscaling to 4K", 0.78, 1.0)]:
             steps = 14
             for k in range(steps + 1):

@@ -101,10 +101,21 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
         background = selector.select_background(duration)
         reporter.artifact("video", "background", background.name)
         reporter.log(f"Background: {background.name} @ {background.start:.0f}s")
+
+        # Live-chat reactions for the stream overlay (best-effort).
+        chat = []
+        if config.settings.visuals.chat_overlay:
+            reporter.progress("video", 0.01, "Spinning up the chat…")
+            chat = llm.generate_chat(script)
+            if chat:
+                reporter.artifact("video", "chat", [f"{u}: {m}" for u, m in chat][:8])
+                reporter.log(f"Chat overlay: {len(chat)} reactions")
+
         srt_path = os.path.join(config.project_dir(project), "speech.srt")
         video.render_video(
             project, words, background, mixed, srt_path, s.use_gpu,
             on_progress=lambda f, m: reporter.progress("video", f if f is not None else reporter.state.stages["video"].progress, m),
+            chat=chat,
         )
         preview = "video_styled.mp4" if os.path.exists(
             os.path.join(config.project_dir(project), "video_styled.mp4")) else "video_final.mp4"

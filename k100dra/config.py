@@ -32,12 +32,12 @@ VIDEO_USAGE_FILE = os.path.join(ROOT, "video_usage.json")
 UPLOAD_TIME_FILE = os.path.join(ROOT, "upload_time.json")
 
 
-def _load_dotenv() -> None:
+def _load_dotenv(override: bool = False) -> None:
     """Best-effort load of a ``.env`` file (optional dependency)."""
     try:
         from dotenv import load_dotenv  # type: ignore
-        load_dotenv(os.path.join(ROOT, ".env"))
-        load_dotenv()
+        load_dotenv(os.path.join(ROOT, ".env"), override=override)
+        load_dotenv(override=override)
     except Exception:
         pass
 
@@ -87,9 +87,27 @@ class VisualStyle:
     color_grade: bool = True                  # contrast / saturation / vignette
     motion_zoom: bool = True                  # slow Ken-Burns zoom on background
     progress_bar: bool = True                 # growing retention bar at bottom
-    watermark: bool = True                    # small K100DRA logo
+    watermark: bool = False                   # static logo (off; handle pill replaces it)
     watermark_file: str = "K100DRA_Neutral_White.png"
     watermark_opacity: float = 0.55
+
+    # Stream-clip identity --------------------------------------------------- #
+    # This is what makes a K100DRA short instantly recognizable: it is framed as
+    # a CLIP from her live stream — handle badge, "LIVE" tag, and a live chat
+    # overlay reacting to the story in real time.
+    stream_mode: bool = True
+    handle: str = "@k100dra"                  # shown as an on-screen badge
+    live_badge: bool = True                   # red "LIVE" tag
+    clip_badge: bool = True                   # "CLIP" corner tag (clip-from-stream cue)
+    chat_overlay: bool = True                 # scrolling live-chat reactions
+    chat_lines_visible: int = 3               # how many chat lines on screen at once
+    chat_color: str = "#EDEDED"              # chat message text
+    # Her profile picture / facecam — shown the whole clip for brand recall.
+    facecam: bool = True
+    facecam_file: str = "K100DRA_Speaking.png"
+    facecam_width: int = 270
+    facecam_frame: bool = True                # accent ring around the facecam
+    chat_font: str = "Montserrat_BLACK.ttf"   # readable font for chat/badges
 
 
 @dataclass
@@ -107,9 +125,11 @@ class Settings:
     # Default voice is "Rachel", a clear narrator voice on every ElevenLabs account.
     elevenlabs_voice_id: str = field(default_factory=lambda: _env("ELEVENLABS_VOICE_ID", default="21m00Tcm4TlvDq8ikWAM"))
     elevenlabs_model: str = field(default_factory=lambda: _env("ELEVENLABS_MODEL", default="eleven_multilingual_v2"))
-    voice_stability: float = field(default_factory=lambda: float(_env("ELEVENLABS_STABILITY", default="0.45")))
+    # Lower stability + higher style = more dynamic, emphatic, "streamer"
+    # delivery (lots of intonation) instead of a flat narrator read.
+    voice_stability: float = field(default_factory=lambda: float(_env("ELEVENLABS_STABILITY", default="0.32")))
     voice_similarity: float = field(default_factory=lambda: float(_env("ELEVENLABS_SIMILARITY", default="0.8")))
-    voice_style: float = field(default_factory=lambda: float(_env("ELEVENLABS_STYLE", default="0.35")))
+    voice_style: float = field(default_factory=lambda: float(_env("ELEVENLABS_STYLE", default="0.55")))
     voice_speaker_boost: bool = field(default_factory=lambda: _env_bool("ELEVENLABS_SPEAKER_BOOST", True))
     # OpenAI voice used only as a fallback when ElevenLabs is unavailable.
     openai_tts_voice: str = field(default_factory=lambda: _env("OPENAI_TTS_VOICE", default="nova"))
@@ -139,8 +159,14 @@ class Settings:
     def font_path(self) -> str:
         return os.path.join(FONTS_DIR, self.visuals.caption_font)
 
+    def chat_font_path(self) -> str:
+        return os.path.join(FONTS_DIR, self.visuals.chat_font)
+
     def watermark_path(self) -> str:
         return os.path.join(IMGS_DIR, self.visuals.watermark_file)
+
+    def facecam_path(self) -> str:
+        return os.path.join(IMGS_DIR, self.visuals.facecam_file)
 
     def public_dict(self) -> dict:
         """A secret-free view of the settings for the UI/logs."""
@@ -154,6 +180,18 @@ class Settings:
 settings = Settings()
 
 
+def reload() -> "Settings":
+    """Re-read the ``.env`` and rebuild the shared settings.
+
+    Used by the setup wizard after it writes new keys, so the running process
+    picks them up without a restart.
+    """
+    global settings
+    _load_dotenv(override=True)
+    settings = Settings()
+    return settings
+
+
 # --------------------------------------------------------------------------- #
 # Environment readiness
 # --------------------------------------------------------------------------- #
@@ -161,7 +199,8 @@ def ffmpeg_available() -> bool:
     return shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None
 
 
-def readiness(s: Settings = settings) -> dict:
+def readiness(s: Optional[Settings] = None) -> dict:
+    s = s or settings
     """Report what the studio can and cannot do right now.
 
     Drives the dashboard banner and the automatic fall-back to *demo mode* when

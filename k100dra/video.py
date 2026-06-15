@@ -228,6 +228,98 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
 
 # --------------------------------------------------------------------------- #
+# Stream-clip overlay (handle, LIVE/CLIP badges, live chat)
+# --------------------------------------------------------------------------- #
+# Chat panel geometry (at 1080×1920), shared by the ASS author and the ffmpeg
+# backdrop so they line up.
+CHAT_X, CHAT_Y, CHAT_LINE_H, CHAT_W = 42, 660, 66, 600
+# Chat-handle colours so usernames look like a real, varied chat.
+CHAT_USER_COLORS = ["#FF6B6B", "#FFD93D", "#6BCB77", "#4D96FF", "#FF6FB5", "#C77DFF"]
+
+
+def _ass_c(value: str) -> str:
+    """``#RRGGBB`` → inline ASS colour ``&HBBGGRR&``."""
+    v = value.lstrip("#")
+    return f"&H{v[4:6]}{v[2:4]}{v[0:2]}&".upper()
+
+
+def chat_panel() -> tuple:
+    vis = config.settings.visuals
+    k = max(1, vis.chat_lines_visible)
+    return (CHAT_X - 16, CHAT_Y - 14, CHAT_W, k * CHAT_LINE_H + 24)
+
+
+def _rolling_chat_events(messages, duration: float, k: int, chat6: str) -> List[str]:
+    """Render chat as a rolling stack: newest at the bottom, scrolling up."""
+    m = len(messages)
+    if m == 0:
+        return []
+    t0, t1 = 1.4, max(3.0, duration - 1.4)
+    times = [t0 + (t1 - t0) * i / m for i in range(m)] + [duration]
+    events: List[str] = []
+    for i, (user, msg) in enumerate(messages):
+        user_c = _ass_c(CHAT_USER_COLORS[i % len(CHAT_USER_COLORS)])
+        for p in range(k):                      # p newer messages have arrived
+            if i + p >= len(times) - 1:
+                break
+            seg_start = times[i + p]
+            seg_end = times[i + p + 1]
+            if seg_end <= seg_start:
+                continue
+            slot = k - 1 - p                     # bottom slot is newest
+            y = CHAT_Y + slot * CHAT_LINE_H
+            fade = r"\fad(120,0)" if p == 0 else ""
+            text = (f"{{\\an7\\pos({CHAT_X},{y}){fade}\\c{user_c}}}{_clean(user)}"
+                    f"{{\\c{chat6}}}: {_clean(msg)}")
+            events.append(f"Dialogue: 1,{_ass_time(seg_start)},{_ass_time(seg_end)},Chat,,0,0,0,,{text}")
+    return events
+
+
+def build_overlay_ass(messages, duration: float, out_path: str, font_family: str) -> str:
+    """Write the stream-UI ASS: handle, LIVE/CLIP badges and the live chat."""
+    vis = config.settings.visuals
+    accent6 = _ass_c(vis.accent_color)
+    chat6 = _ass_c(vis.chat_color)
+    k = max(1, vis.chat_lines_visible)
+    full = _ass_time(duration)
+
+    header = f"""[Script Info]
+ScriptType: v4.00+
+PlayResX: {RENDER_W}
+PlayResY: {RENDER_H}
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Badge,{font_family},50,&H00FFFFFF,&H000000FF,&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,4,2,7,0,0,0,1
+Style: Chat,{font_family},40,{chat6},&H000000FF,&H00101010,&H80000000,0,0,0,0,100,100,0,0,1,3,1,7,0,0,0,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+
+    events: List[str] = []
+    # With the facecam on, the handle + LIVE sit beside it as a stream
+    # "nameplate"; otherwise the handle is the top-left badge.
+    if vis.facecam and os.path.exists(config.settings.facecam_path()):
+        hx, hy = 42 + vis.facecam_width + 26, 70
+    else:
+        hx, hy = 42, 46
+    events.append(f"Dialogue: 2,0:00:00.00,{full},Badge,,0,0,0,,{{\\an7\\pos({hx},{hy})\\c{accent6}}}{_clean(vis.handle)}")
+    if vis.live_badge:
+        events.append(f"Dialogue: 2,0:00:00.00,{full},Badge,,0,0,0,,{{\\an7\\pos({hx},{hy + 60})\\fscx80\\fscy80\\c&H3D2EFF&}}● LIVE")
+    if vis.clip_badge:
+        events.append(f"Dialogue: 2,0:00:00.00,{full},Badge,,0,0,0,,{{\\an9\\pos(1038,52)\\fscx76\\fscy76}}CLIP")
+    if vis.chat_overlay:
+        events += _rolling_chat_events(list(messages or []), duration, k, chat6)
+
+    with open(out_path, "w", encoding="utf-8") as fh:
+        fh.write(header + "\n".join(events) + "\n")
+    return out_path
+
+
+# --------------------------------------------------------------------------- #
 # Audio helpers (pydub)
 # --------------------------------------------------------------------------- #
 def audio_duration(path: str) -> float:
@@ -294,36 +386,49 @@ def _stylize_base(src: str, out: str, start: float, duration: float,
     _run_progress(cmd, duration, cb, lo, hi)
 
 
-def _captions_pass(base_video: str, audio: str, ass_name: str, out: str,
+def _captions_pass(base_video: str, audio: str, out: str,
                    vis: "config.VisualStyle", duration: float, use_gpu: bool,
                    cb: ProgressCb, lo: float, hi: float, cwd: str,
-                   draw_bar: bool = True) -> None:
-    """Burn captions + watermark + progress bar and mux the final audio."""
+                   draw_bar: bool = True, stream: bool = True,
+                   has_chat: bool = False) -> None:
+    """Compose captions + stream overlay + facecam + bar, then mux audio."""
     inputs = ["-i", base_video, "-i", audio]
     accent = hex_to_ffmpeg(vis.accent_color)
 
-    # Point libass at our bundled fonts so the brand face actually loads
-    # (it is not installed system-wide).
-    vchain = f"[0:v]ass={ass_name}:fontsdir={config.FONTS_DIR}"
+    # Point libass at our bundled fonts so the brand faces actually load
+    # (they are not installed system-wide).
+    parts = [f"[0:v]ass=captions.ass:fontsdir={config.FONTS_DIR}"]
+    if stream and vis.chat_overlay and has_chat:
+        px, py, pw, ph = chat_panel()
+        parts.append(f"drawbox=x={px}:y={py}:w={pw}:h={ph}:color=black@0.34:t=fill")
+    if stream and vis.stream_mode:
+        parts.append(f"ass=overlay.ass:fontsdir={config.FONTS_DIR}")
     if vis.progress_bar and draw_bar:
-        vchain += (f",drawbox=x=0:y=ih-14:w='iw*t/{duration:.3f}':h=14:"
-                   f"color={accent}@0.95:t=fill")
+        parts.append(f"drawbox=x=0:y=ih-14:w='iw*t/{duration:.3f}':h=14:color={accent}@0.95:t=fill")
+    vchain = ",".join(parts)
 
+    # A single image overlay: the facecam (brand recall) in stream mode, else the
+    # optional static watermark.
+    facecam = config.settings.facecam_path()
     watermark = config.settings.watermark_path()
-    if vis.watermark and os.path.exists(watermark):
+    if stream and vis.facecam and os.path.exists(facecam):
+        inputs += ["-i", facecam]
+        frame = (f",pad=iw+16:ih+16:8:8:{accent}@1.0" if vis.facecam_frame else "")
+        vchain += "[vbase];"
+        vchain += (f"[2:v]scale={vis.facecam_width}:-1{frame},format=rgba[cam];"
+                   f"[vbase][cam]overlay=40:40[vout]")
+    elif vis.watermark and os.path.exists(watermark):
         inputs += ["-i", watermark]
         vchain += "[vbase];"
         vchain += (f"[2:v]scale=150:-1,format=rgba,"
                    f"colorchannelmixer=aa={vis.watermark_opacity}[wm];"
                    f"[vbase][wm]overlay=W-w-44:54[vout]")
-        vmap = "[vout]"
     else:
         vchain += "[vout]"
-        vmap = "[vout]"
 
     cmd = inputs + [
         "-filter_complex", vchain,
-        "-map", vmap, "-map", "1:a:0",
+        "-map", "[vout]", "-map", "1:a:0",
         "-c:v", _codec(use_gpu), "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "192k", "-shortest", out,
     ]
@@ -360,39 +465,50 @@ def _basic_render(src: str, audio: str, srt_path: str, out: str,
 # Orchestration
 # --------------------------------------------------------------------------- #
 def render_video(project: str, words, background, audio_path: str,
-                 srt_path: str, use_gpu: bool, on_progress: ProgressCb = None) -> str:
+                 srt_path: str, use_gpu: bool, on_progress: ProgressCb = None,
+                 chat=None) -> str:
     """Produce ``video_final.mp4`` for ``project`` and return its path."""
     pdir = config.project_dir(project)
     vis = config.settings.visuals
     base = os.path.join(pdir, "base.mp4")
     styled = os.path.join(pdir, "video_styled.mp4")
     final = os.path.join(pdir, "video_final.mp4")
-    ass_path = os.path.join(pdir, "captions.ass")
     duration = background.duration
+    has_chat = bool(chat)
 
     try:
-        font_family = font_family_name(config.settings.font_path())
-        build_ass(words, ass_path, vis, font_family)
+        build_ass(words, os.path.join(pdir, "captions.ass"), vis,
+                  font_family_name(config.settings.font_path()))
+        if vis.stream_mode:
+            build_overlay_ass(chat or [], duration, os.path.join(pdir, "overlay.ass"),
+                              font_family_name(config.settings.chat_font_path()))
+
         if on_progress:
             on_progress(0.02, f"Styling background ({background.name})")
         _stylize_base(background.path, base, background.start, duration, vis,
                       use_gpu, on_progress, 0.02, 0.30)
 
+        # Degrade gracefully: full stream look → drop bar → captions only.
         if on_progress:
-            on_progress(0.30, "Burning animated captions")
-        try:
-            _captions_pass(base, audio_path, "captions.ass", styled, vis, duration,
-                           use_gpu, on_progress, 0.30, 0.78, cwd=pdir)
-        except Exception as cap_exc:
-            # The time-based progress bar is the most fragile filter; if it is
-            # what failed, keep the captions and just drop the bar.
-            if vis.progress_bar:
-                if on_progress:
-                    on_progress(0.30, "Retrying captions without progress bar")
-                _captions_pass(base, audio_path, "captions.ass", styled, vis, duration,
-                               use_gpu, on_progress, 0.30, 0.78, cwd=pdir, draw_bar=False)
-            else:
-                raise cap_exc
+            on_progress(0.30, "Burning captions + stream overlay")
+        attempts = [
+            dict(draw_bar=True, stream=True),
+            dict(draw_bar=False, stream=True),
+            dict(draw_bar=False, stream=False),
+        ]
+        last_exc = None
+        for i, opts in enumerate(attempts):
+            try:
+                _captions_pass(base, audio_path, styled, vis, duration, use_gpu,
+                               on_progress, 0.30, 0.78, cwd=pdir, has_chat=has_chat, **opts)
+                last_exc = None
+                break
+            except Exception as exc:
+                last_exc = exc
+                if on_progress and i + 1 < len(attempts):
+                    on_progress(0.30, "Simplifying overlay and retrying captions")
+        if last_exc is not None:
+            raise last_exc
 
         if on_progress:
             on_progress(0.78, "Upscaling to 4K")

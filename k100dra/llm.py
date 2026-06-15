@@ -87,6 +87,35 @@ def storyfy(
     return text
 
 
+def generate_chat(script: str, count: int = 12) -> List[Tuple[str, str]]:
+    """Generate fake live-chat reactions to the story (username, message).
+
+    Powers the on-screen chat overlay. Never fatal: returns ``[]`` on any error
+    so a missing chat overlay can't break a render.
+    """
+    try:
+        client = _get_client()
+        resp = client.chat.completions.create(
+            model=config.settings.model_rate,  # cheap model is plenty for chat
+            messages=[
+                {"role": "system", "content": persona.chat_system_prompt(count)},
+                {"role": "user", "content": script},
+            ],
+            temperature=1.0,
+        )
+        out: List[Tuple[str, str]] = []
+        for line in resp.choices[0].message.content.splitlines():
+            line = line.strip().lstrip("-•0123456789. ").strip()
+            if ":" in line:
+                user, msg = line.split(":", 1)
+                user, msg = user.strip(), msg.strip()
+                if user and msg:
+                    out.append((user[:24], msg[:80]))
+        return out
+    except Exception:
+        return []
+
+
 def metadata(script: str, subreddit: str, source_title: str, link: str) -> Tuple[str, str, List[str]]:
     """Generate title, description and tags for the upload."""
     client = _get_client()

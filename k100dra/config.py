@@ -201,6 +201,36 @@ def reload() -> "Settings":
     return settings
 
 
+def _read_env_pairs() -> dict:
+    path = os.path.join(ROOT, ".env")
+    data: dict = {}
+    if os.path.exists(path):
+        for line in open(path, encoding="utf-8"):
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                data[k.strip()] = v.strip().strip('"').strip("'")
+    return data
+
+
+def write_env_var(key: str, value: str) -> str:
+    """Set a single key in the .env and reload settings (used by the UI/wizard)."""
+    data = _read_env_pairs()
+    data[key] = str(value)
+    path = os.path.join(ROOT, ".env")
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("# K100DRA configuration\n")
+        for k, v in data.items():
+            fh.write(f"{k}={v}\n")
+    try:
+        os.chmod(path, 0o600)
+    except Exception:
+        pass
+    os.environ[key] = str(value)
+    reload()
+    return value
+
+
 # --------------------------------------------------------------------------- #
 # Environment readiness
 # --------------------------------------------------------------------------- #

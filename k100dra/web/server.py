@@ -194,6 +194,27 @@ async def post_links(kind: str, payload: dict | None = None) -> JSONResponse:
     return JSONResponse(_links_payload(kind))
 
 
+@app.get("/api/voices")
+async def get_voices() -> JSONResponse:
+    from .. import voice
+    s = config.settings
+    return JSONResponse({
+        "current": s.elevenlabs_voice_id,
+        "has_key": bool(s.elevenlabs_key),
+        "voices": voice.list_voices(),
+    })
+
+
+@app.post("/api/voice")
+async def set_voice(payload: dict | None = None) -> JSONResponse:
+    payload = payload or {}
+    vid = str(payload.get("voice_id", "")).strip()
+    if not vid:
+        return JSONResponse({"error": "voice_id required"}, status_code=400)
+    config.write_env_var("ELEVENLABS_VOICE_ID", vid)
+    return JSONResponse({"current": config.settings.elevenlabs_voice_id, "ok": True})
+
+
 @app.websocket("/ws")
 async def ws_endpoint(websocket: WebSocket) -> None:
     await websocket.accept()

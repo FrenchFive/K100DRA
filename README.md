@@ -116,6 +116,8 @@ KEY_OPENAI=sk-proj-xxxx
 # Voice (recommended — falls back to OpenAI TTS if missing)
 ELEVENLABS_API_KEY=xxxx
 ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM      # default: "Rachel"
+# Tip: pick the voice visually in the studio → Sources tab (or the setup
+# wizard) — it lists the voices on your ElevenLabs account and sets this for you.
 
 # Reddit source (required for real runs)
 REDDIT_CLIENT_ID=xxxx

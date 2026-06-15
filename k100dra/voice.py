@@ -17,6 +17,28 @@ from . import config
 ProgressCb = Optional[Callable[[float, str], None]]
 
 
+def list_voices() -> list:
+    """List the voices on the configured ElevenLabs account (name + id).
+
+    Returns [] if there's no key or the request fails — so callers can show a
+    "paste an ID" fallback.
+    """
+    s = config.settings
+    if not s.elevenlabs_key:
+        return []
+    try:
+        import requests
+        r = requests.get("https://api.elevenlabs.io/v1/voices",
+                         headers={"xi-api-key": s.elevenlabs_key}, timeout=15)
+        if r.status_code != 200:
+            return []
+        return [{"voice_id": v.get("voice_id"), "name": v.get("name", ""),
+                 "category": v.get("category", "")}
+                for v in r.json().get("voices", []) if v.get("voice_id")]
+    except Exception:
+        return []
+
+
 def synthesize(text: str, project: str, on_progress: ProgressCb = None) -> dict:
     """Create ``speech.mp3`` for ``project``. Returns info about the engine used."""
     out_path = os.path.join(config.project_dir(project), "speech.mp3")

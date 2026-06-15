@@ -292,6 +292,40 @@ def _configure_simple(title: str, env_key: str, validator: Callable[[str], Tuple
             return False
 
 
+def _configure_voice(interactive: bool) -> None:
+    """Let the user pick which ElevenLabs voice to use (saved as a Voice ID)."""
+    if not config.settings.elevenlabs_key:
+        return
+    _hr("ElevenLabs voice")
+    from . import voice
+    cur = config.settings.elevenlabs_voice_id
+    _info(f"current Voice ID: {cur}")
+    if not interactive:
+        return
+
+    voices = voice.list_voices()
+    if voices:
+        for i, v in enumerate(voices[:30], 1):
+            print(f"     [{i:>2}] {v['name']:<24} {v['voice_id']}")
+        sel = _ask("Pick a number, paste a Voice ID, or Enter to keep current", secret=False)
+        if not sel:
+            _info("keeping current voice")
+            return
+        if sel.isdigit() and 1 <= int(sel) <= len(voices):
+            vid = voices[int(sel) - 1]["voice_id"]
+        else:
+            vid = sel.strip()
+    else:
+        _info("(couldn't list your voices — you can paste a Voice ID from elevenlabs.io)")
+        vid = _ask("Paste a Voice ID (or Enter to keep current)", secret=False).strip()
+        if not vid:
+            _info("keeping current voice")
+            return
+
+    config.write_env_var("ELEVENLABS_VOICE_ID", vid)
+    _ok(f"voice set to {vid}")
+
+
 def _configure_reddit(verify: bool, interactive: bool, force: bool) -> bool:
     _hr("Reddit")
     cid, csec = _current("REDDIT_CLIENT_ID"), _current("REDDIT_CLIENT_SECRET")
@@ -418,6 +452,7 @@ def ensure_ready(verify: bool = True, force: bool = False,
     _configure_simple("ElevenLabs", "ELEVENLABS_API_KEY", validate_elevenlabs,
                       required=False, help_url="https://elevenlabs.io/app/settings/api-keys",
                       verify=verify, interactive=interactive, force=force)
+    _configure_voice(interactive=interactive)
     _configure_reddit(verify=verify, interactive=interactive, force=force)
     _check_backgrounds(interactive=interactive)
     _configure_youtube(interactive=interactive, force=force)

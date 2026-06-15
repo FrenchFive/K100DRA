@@ -225,8 +225,30 @@ const LINK_UI = {
 function switchView(view) {
   document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.view === view));
   document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === `view-${view}`));
-  if (view === "sources") { loadLinks("background"); loadLinks("music"); }
+  if (view === "sources") { loadLinks("background"); loadLinks("music"); loadVoices(); }
 }
+
+async function loadVoices() {
+  try {
+    const data = await (await fetch("/api/voices")).json();
+    $("voice-cur").textContent = data.current ? `current: ${data.current}` : "";
+    const sel = $("voice-select");
+    sel.innerHTML = `<option value="">— ${data.voices.length ? "pick a voice" : "your ElevenLabs voices"} —</option>` +
+      data.voices.map((v) => `<option value="${v.voice_id}"${v.voice_id === data.current ? " selected" : ""}>${escapeHtml(v.name)} — ${v.voice_id}</option>`).join("");
+    $("voice-hint").innerHTML = data.has_key
+      ? (data.voices.length ? "Pick one of your voices, or paste any Voice ID." : "Couldn't list voices — paste a Voice ID, or check your ElevenLabs key.")
+      : "Add your ElevenLabs key (run setup) to list voices. You can still paste a Voice ID.";
+  } catch (e) { /* ignore */ }
+}
+
+async function saveVoice() {
+  const vid = ($("voice-id").value.trim() || $("voice-select").value).trim();
+  if (!vid) { alert("Pick a voice or paste a Voice ID."); return; }
+  const res = await post("/api/voice", { voice_id: vid });
+  if (res.ok) { $("voice-id").value = ""; loadVoices(); }
+  else alert(res.error || "Could not save voice");
+}
+$("voice-save").onclick = saveVoice;
 document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => switchView(t.dataset.view)));
 
 async function loadLinks(kind) {

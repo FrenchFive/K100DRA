@@ -113,11 +113,12 @@ class Persona:
         voice_block = ""
         if voiced_chat:
             voice_block = (
-                "\nSECOND SPEAKER: 1 to 3 times, a chat member CUTS YOU OFF and you react to "
-                "them. Write their interjection EXACTLY like this, on its own: "
-                "{chat: short punchy line} (under 8 words, no performance tags inside). Right "
-                "after, react to what they said. Use it to land a hot take or escalate, never "
-                "as filler.\n")
+                "\nSECOND SPEAKER (occasional, NOT every time): every so often a chat member "
+                "jumps in and you react. Mark it as {chat: short punchy line} (under 8 words, "
+                "no tags). SOMETIMES it cuts you off mid-sentence and you react to being "
+                "interrupted ('okay wait, who said that'); sometimes it's just a quick line you "
+                "bounce off. Do it 0 to 3 times TOTAL, only when it adds something. On a short "
+                "clip, once or not at all.\n")
         if kind == "news":
             premise = (
                 "This is a clip from your stream where you react to a REAL news story that is "

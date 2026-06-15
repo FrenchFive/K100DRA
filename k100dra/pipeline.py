@@ -90,6 +90,7 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
         reporter.artifact("voice", "engine", info["engine"])
         reporter.artifact("voice", "voice", info["voice"])
         reporter.artifact("voice", "audio_url", _artifact_url(project, "speech.mp3"))
+        chat_intervals = info.get("chat_intervals") or []
         reporter.done("voice", f"via {info['engine']}")
 
         # 3 — AUDIO MIX ------------------------------------------------------ #
@@ -99,7 +100,11 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
         duration = video.audio_duration(speech)
         if duration > s.target_duration:
             reporter.progress("audio", 0.3, f"Trimming {duration:.0f}s → {s.target_duration:.0f}s")
-            duration = video.speedup_audio(speech, s.target_duration)
+            new_dur = video.speedup_audio(speech, s.target_duration)
+            if chat_intervals and duration > 0:   # speedup shifts the interjection times
+                scale = new_dur / duration
+                chat_intervals = [[a * scale, b * scale] for a, b in chat_intervals]
+            duration = new_dur
         music = selector.select_music(duration=duration, log=reporter.log)
         mixed = os.path.join(config.project_dir(project), "speech_with_music.mp3")
         reporter.progress("audio", 0.7, "Adding background music" if music else "No music found")
@@ -137,7 +142,7 @@ def run(reporter: ProgressReporter, project: Optional[str] = None,
             video.render_video(
                 project, words, background, mixed, srt_path, s.use_gpu,
                 on_progress=lambda f, m: reporter.progress("video", f if f is not None else reporter.state.stages["video"].progress, m),
-                chat=chat,
+                chat=chat, chat_intervals=chat_intervals,
             )
         finally:
             selector.cleanup(background)  # remove any fetched YouTube segment

@@ -56,9 +56,9 @@ def synthesize(text: str, project: str, on_progress: ProgressCb = None) -> dict:
 
     if multi:
         try:
-            engine = _synth_segments(segments, out_path, tags_ok, on_progress)
+            engine, intervals = _synth_segments(segments, out_path, tags_ok, on_progress)
             return {"engine": engine, "voice": s.elevenlabs_voice_id, "tags": tags_ok,
-                    "two_voice": True, "path": out_path}
+                    "two_voice": True, "chat_intervals": intervals, "path": out_path}
         except Exception as exc:
             if on_progress:
                 on_progress(0.0, f"two-voice failed ({exc}); using single voice")
@@ -74,8 +74,14 @@ def _synth_one(text: str, out_path: str, speaker: str, tags_ok: bool,
     s = config.settings
     if s.elevenlabs_key:
         try:
-            vid = s.elevenlabs_chat_voice_id if speaker == "chat" else s.elevenlabs_voice_id
-            _elevenlabs(text if tags_ok else llm.strip_tags(text), out_path, on_progress, vid)
+            if speaker == "chat":
+                vid = s.elevenlabs_chat_voice_id
+                # flat / robotic: max stability, no style, no boost
+                settings = {"stability": s.chat_voice_stability, "similarity_boost": s.voice_similarity,
+                            "style": s.chat_voice_style, "use_speaker_boost": False}
+            else:
+                vid, settings = s.elevenlabs_voice_id, None
+            _elevenlabs(text if tags_ok else llm.strip_tags(text), out_path, on_progress, vid, settings)
             return "elevenlabs"
         except Exception as exc:
             if on_progress:
@@ -85,18 +91,27 @@ def _synth_one(text: str, out_path: str, speaker: str, tags_ok: bool,
     return "openai"
 
 
-def _synth_segments(segments, out_path: str, tags_ok: bool, on_progress: ProgressCb) -> str:
-    """Synthesize each segment with its speaker's voice and stitch them together."""
+def _synth_segments(segments, out_path: str, tags_ok: bool, on_progress: ProgressCb):
+    """Synthesize each segment with its speaker's voice and stitch them together.
+
+    Returns (engine, chat_intervals) where chat_intervals are [start, end] seconds
+    of each chat interjection in the combined audio (for the avatar swap).
+    """
     from pydub import AudioSegment
     combined = AudioSegment.silent(duration=0)
-    engine = "elevenlabs"
-    n = len(segments)
+    intervals, cur, engine, n = [], 0.0, "elevenlabs", len(segments)
     for i, (sp, seg_text) in enumerate(segments):
         seg_file = f"{out_path}.seg{i}.mp3"
         engine = _synth_one(seg_text, seg_file, sp, tags_ok, None)
         clip = AudioSegment.from_file(seg_file)
-        gap = 160 if sp == "chat" else 70   # a beat around the interjection
-        combined += clip + AudioSegment.silent(duration=gap)
+        dur = len(clip) / 1000.0
+        if sp == "chat":
+            intervals.append([round(cur, 2), round(cur + dur, 2)])
+        # Tight cut-in before an interjection so it feels like an interruption.
+        nxt = segments[i + 1][0] if i + 1 < n else None
+        gap = 0.04 if nxt == "chat" else (0.18 if sp == "chat" else 0.08)
+        combined += clip + AudioSegment.silent(duration=int(gap * 1000))
+        cur += dur + gap
         try:
             os.remove(seg_file)
         except Exception:
@@ -104,11 +119,12 @@ def _synth_segments(segments, out_path: str, tags_ok: bool, on_progress: Progres
         if on_progress:
             on_progress((i + 1) / n, f"Recording voices… ({i + 1}/{n})")
     combined.export(out_path, format="mp3")
-    return f"{engine}+chat"
+    return f"{engine}+chat", intervals
 
 
 # --------------------------------------------------------------------------- #
-def _elevenlabs(text: str, out_path: str, on_progress: ProgressCb, voice_id: str = None) -> None:
+def _elevenlabs(text: str, out_path: str, on_progress: ProgressCb,
+                voice_id: str = None, settings: dict = None) -> None:
     import requests  # always available
 
     s = config.settings
@@ -122,7 +138,7 @@ def _elevenlabs(text: str, out_path: str, on_progress: ProgressCb, voice_id: str
     payload = {
         "text": text,
         "model_id": s.elevenlabs_model,
-        "voice_settings": {
+        "voice_settings": settings or {
             "stability": s.voice_stability,
             "similarity_boost": s.voice_similarity,
             "style": s.voice_style,

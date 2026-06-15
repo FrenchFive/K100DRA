@@ -202,7 +202,8 @@ async def get_voices() -> JSONResponse:
     from .. import voice
     s = config.settings
     return JSONResponse({
-        "current": s.elevenlabs_voice_id,
+        "main": s.elevenlabs_voice_id,
+        "chat": s.elevenlabs_chat_voice_id,
         "has_key": bool(s.elevenlabs_key),
         "voices": voice.list_voices(),
     })
@@ -214,8 +215,10 @@ async def set_voice(payload: dict | None = None) -> JSONResponse:
     vid = str(payload.get("voice_id", "")).strip()
     if not vid:
         return JSONResponse({"error": "voice_id required"}, status_code=400)
-    config.write_env_var("ELEVENLABS_VOICE_ID", vid)
-    return JSONResponse({"current": config.settings.elevenlabs_voice_id, "ok": True})
+    which = (payload.get("which") or "main").lower()
+    config.write_env_var("ELEVENLABS_CHAT_VOICE_ID" if which == "chat" else "ELEVENLABS_VOICE_ID", vid)
+    s = config.settings
+    return JSONResponse({"main": s.elevenlabs_voice_id, "chat": s.elevenlabs_chat_voice_id, "ok": True})
 
 
 @app.post("/api/install/ytdlp")

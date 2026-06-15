@@ -116,6 +116,7 @@ class VisualStyle:
     facecam_ring: int = 6                     # static ring thickness
     speaking_ring: bool = True                # Discord-style glow while she talks
     ring_glow: int = 22                       # glow band thickness (halo behind avatar)
+    chat_avatar_file: str = "chat.png"        # shown while a chat interjection speaks
     chat_font: str = "Montserrat_BLACK.ttf"   # readable font for chat/handle
 
 
@@ -154,6 +155,9 @@ class Settings:
     chat_voice: bool = field(default_factory=lambda: _env_bool("K100DRA_CHAT_VOICE", True))
     elevenlabs_chat_voice_id: str = field(default_factory=lambda: _env("ELEVENLABS_CHAT_VOICE_ID", default="ErXwobaYiN019PkySvjV"))  # "Antoni"
     openai_chat_tts_voice: str = field(default_factory=lambda: _env("OPENAI_CHAT_TTS_VOICE", default="onyx"))
+    # Chat voice is deliberately flat/robotic (a TTS-bot reading chat).
+    chat_voice_stability: float = field(default_factory=lambda: float(_env("ELEVENLABS_CHAT_STABILITY", default="1.0")))
+    chat_voice_style: float = field(default_factory=lambda: float(_env("ELEVENLABS_CHAT_STYLE", default="0.0")))
 
     # --- Reddit ------------------------------------------------------------- #
     reddit_client_id: Optional[str] = field(default_factory=lambda: _env("REDDIT_CLIENT_ID"))
@@ -199,6 +203,9 @@ class Settings:
 
     def facecam_path(self) -> str:
         return os.path.join(IMGS_DIR, self.visuals.facecam_file)
+
+    def chat_avatar_path(self) -> str:
+        return os.path.join(IMGS_DIR, self.visuals.chat_avatar_file)
 
     def public_dict(self) -> dict:
         """A secret-free view of the settings for the UI/logs."""

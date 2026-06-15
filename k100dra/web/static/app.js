@@ -231,27 +231,34 @@ function switchView(view) {
   if (view === "sources") { loadLinks("background"); loadLinks("music"); loadVoices(); }
 }
 
+function fillVoiceSelect(id, voices, current) {
+  $(id).innerHTML = `<option value="">— ${voices.length ? "pick a voice" : "your ElevenLabs voices"} —</option>` +
+    voices.map((v) => `<option value="${v.voice_id}"${v.voice_id === current ? " selected" : ""}>${escapeHtml(v.name)} — ${v.voice_id}</option>`).join("");
+}
+
 async function loadVoices() {
   try {
     const data = await (await fetch("/api/voices")).json();
-    $("voice-cur").textContent = data.current ? `current: ${data.current}` : "";
-    const sel = $("voice-select");
-    sel.innerHTML = `<option value="">— ${data.voices.length ? "pick a voice" : "your ElevenLabs voices"} —</option>` +
-      data.voices.map((v) => `<option value="${v.voice_id}"${v.voice_id === data.current ? " selected" : ""}>${escapeHtml(v.name)} — ${v.voice_id}</option>`).join("");
+    $("voice-cur").textContent = `her: ${data.main || "?"} · chat: ${data.chat || "?"}`;
+    fillVoiceSelect("voice-select", data.voices, data.main);
+    fillVoiceSelect("chatvoice-select", data.voices, data.chat);
     $("voice-hint").innerHTML = data.has_key
-      ? (data.voices.length ? "Pick one of your voices, or paste any Voice ID." : "Couldn't list voices — paste a Voice ID, or check your ElevenLabs key.")
+      ? (data.voices.length ? "Pick from your voices or paste any Voice ID. The chat voice is rendered flat/robotic." : "Couldn't list voices — paste a Voice ID, or check your ElevenLabs key.")
       : "Add your ElevenLabs key (run setup) to list voices. You can still paste a Voice ID.";
   } catch (e) { /* ignore */ }
 }
 
-async function saveVoice() {
-  const vid = ($("voice-id").value.trim() || $("voice-select").value).trim();
+async function saveVoice(which) {
+  const idEl = which === "chat" ? "chatvoice-id" : "voice-id";
+  const selEl = which === "chat" ? "chatvoice-select" : "voice-select";
+  const vid = ($(idEl).value.trim() || $(selEl).value).trim();
   if (!vid) { alert("Pick a voice or paste a Voice ID."); return; }
-  const res = await post("/api/voice", { voice_id: vid });
-  if (res.ok) { $("voice-id").value = ""; loadVoices(); }
+  const res = await post("/api/voice", { voice_id: vid, which });
+  if (res.ok) { $(idEl).value = ""; loadVoices(); }
   else alert(res.error || "Could not save voice");
 }
-$("voice-save").onclick = saveVoice;
+$("voice-save").onclick = () => saveVoice("main");
+$("chatvoice-save").onclick = () => saveVoice("chat");
 document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => switchView(t.dataset.view)));
 
 async function loadLinks(kind) {

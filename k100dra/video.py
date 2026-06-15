@@ -506,10 +506,11 @@ def _captions_pass(base_video: str, audio: str, out: str,
                    vis: "config.VisualStyle", duration: float, use_gpu: bool,
                    cb: ProgressCb, lo: float, hi: float, cwd: str,
                    draw_bar: bool = True, stream: bool = True,
-                   has_chat: bool = False, facecam_round=None) -> None:
+                   has_chat: bool = False, facecam_round=None, chat_intervals=None) -> None:
     """Compose captions + stream overlay + facecam + bar, then mux audio."""
     inputs = ["-i", base_video, "-i", audio]
     accent = hex_to_ffmpeg(vis.accent_color)
+    chat_intervals = chat_intervals or []
 
     # Point libass at our bundled fonts so the brand faces actually load
     # (they are not installed system-wide). Use a relative path — see _fontsdir.
@@ -521,18 +522,28 @@ def _captions_pass(base_video: str, audio: str, out: str,
         parts.append(f"drawbox=x=0:y=ih-14:w='iw*t/{duration:.3f}':h=14:color={accent}@0.95:t=fill")
     vchain = ",".join(parts)
 
-    # A single image overlay: the centered facecam (brand recall) in stream mode,
-    # else the optional static watermark.
+    # The centered facecam (brand recall) in stream mode. When a chat interjection
+    # is speaking, swap her avatar for the chat avatar (the cat) for those moments.
     facecam = config.settings.facecam_path()
+    chat_avatar = config.settings.chat_avatar_path()
     watermark = config.settings.watermark_path()
+    cam_w = vis.facecam_width
+    ox = (RENDER_W - cam_w) // 2
+    oy = vis.facecam_center_y - cam_w // 2
     if stream and vis.facecam and os.path.exists(facecam):
         inputs += ["-i", facecam]
-        cam_w = vis.facecam_width
-        ox = (RENDER_W - cam_w) // 2
-        oy = vis.facecam_center_y - cam_w // 2
-        vchain += "[vbase];"
-        vchain += (f"[2:v]{_facecam_chain(vis, facecam_round)}[cam];"
-                   f"[vbase][cam]overlay={ox}:{oy}[vout]")
+        if chat_intervals and os.path.exists(chat_avatar):
+            inputs += ["-i", chat_avatar]   # input 3
+            chat_expr = "+".join(f"between(t,{a:.2f},{b:.2f})" for a, b in chat_intervals)
+            vchain += "[vbase];"
+            vchain += (f"[2:v]{_facecam_chain(vis, facecam_round)}[kcam];"
+                       f"[3:v]{_facecam_chain(vis, facecam_round)}[ccam];"
+                       f"[vbase][kcam]overlay={ox}:{oy}:enable='not({chat_expr})'[v1];"
+                       f"[v1][ccam]overlay={ox}:{oy}:enable='{chat_expr}'[vout]")
+        else:
+            vchain += "[vbase];"
+            vchain += (f"[2:v]{_facecam_chain(vis, facecam_round)}[cam];"
+                       f"[vbase][cam]overlay={ox}:{oy}[vout]")
     elif vis.watermark and os.path.exists(watermark):
         inputs += ["-i", watermark]
         vchain += "[vbase];"
@@ -583,7 +594,7 @@ def _basic_render(src: str, audio: str, srt_path: str, out: str,
 # --------------------------------------------------------------------------- #
 def render_video(project: str, words, background, audio_path: str,
                  srt_path: str, use_gpu: bool, on_progress: ProgressCb = None,
-                 chat=None) -> str:
+                 chat=None, chat_intervals=None) -> str:
     """Produce ``video_final.mp4`` for ``project`` and return its path."""
     pdir = config.project_dir(project)
     vis = config.settings.visuals
@@ -592,6 +603,7 @@ def render_video(project: str, words, background, audio_path: str,
     final = os.path.join(pdir, "video_final.mp4")
     duration = background.duration
     has_chat = bool(chat)
+    chat_intervals = chat_intervals or []
 
     try:
         build_ass(words, os.path.join(pdir, "captions.ass"), vis,
@@ -618,7 +630,8 @@ def render_video(project: str, words, background, audio_path: str,
         for i, opts in enumerate(attempts):
             try:
                 _captions_pass(base, audio_path, styled, vis, duration, use_gpu,
-                               on_progress, 0.30, 0.78, cwd=pdir, has_chat=has_chat, **opts)
+                               on_progress, 0.30, 0.78, cwd=pdir, has_chat=has_chat,
+                               chat_intervals=chat_intervals, **opts)
                 last_exc = None
                 break
             except Exception as exc:

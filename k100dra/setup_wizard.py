@@ -187,11 +187,15 @@ def ensure_dependencies(interactive: bool) -> bool:
         return True
     _bad(f"missing packages: {', '.join(missing)}")
     if interactive and _confirm("Install them now from requirements.txt?", True):
-        subprocess.run([sys.executable, "-m", "pip", "install", "-r",
-                        os.path.join(config.ROOT, "requirements.txt")])
+        try:
+            subprocess.run([sys.executable, "-m", "pip", "install", "-r",
+                            os.path.join(config.ROOT, "requirements.txt")], check=False)
+        except KeyboardInterrupt:
+            _info("install cancelled")
+            return False
         still = [m for m in missing if not _importable(m)]
         if still:
-            _bad(f"still missing: {', '.join(still)}")
+            _bad(f"still missing: {', '.join(still)} — run: pip install -r requirements.txt")
             return False
         _ok("packages installed")
         return True

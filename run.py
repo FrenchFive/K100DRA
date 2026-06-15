@@ -77,7 +77,12 @@ def main() -> None:
 
 
 def _studio(host: str, port: int) -> None:
-    from k100dra.web.server import serve
+    try:
+        from k100dra.web.server import serve
+    except ImportError as exc:
+        print(f"\n  ✖ The studio needs the web packages ({exc.name}).")
+        print("    Install them with:  pip install -r requirements.txt\n")
+        return
     url = f"http://{'localhost' if host == '0.0.0.0' else host}:{port}"
     print(f"\n  🎬  Studio → {url}   (press Start, or ✨ Demo)\n")
     try:
@@ -106,4 +111,8 @@ def _headless() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\n  Cancelled. Re-run `python run.py` any time. 👋\n")
+        sys.exit(0)
